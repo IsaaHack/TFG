@@ -11,7 +11,7 @@ namespace py = pybind11;
 using namespace std;
 
 
-float clas_rate(const float* weights, size_t w_size, const float* X_train, size_t n, size_t d, const int* y_train) {
+float clas_rate_cpp(const float* weights, size_t w_size, const float* X_train, size_t n, size_t d, const int* y_train) {
     using namespace std;
     vector<float> weights_to_use;
     vector<vector<float>> attributes_to_use;
@@ -71,7 +71,19 @@ float clas_rate(const float* weights, size_t w_size, const float* X_train, size_
     return 100.0f * correct / n;
 }
 
-float red_rate(const float* weights, size_t w_size) {
+float clas_rate(py::array_t<float> weights_np, py::array_t<float> X_train_np, py::array_t<int> y_train_np) {
+    auto weights = weights_np.unchecked<1>();
+    auto X_train = X_train_np.unchecked<2>();
+    auto y_train = y_train_np.unchecked<1>();
+
+    size_t w_size = weights.shape(0);
+    size_t n = X_train.shape(0);
+    size_t d = X_train.shape(1);
+
+    return clas_rate_cpp(weights.data(0), w_size, X_train.data(0, 0), n, d, y_train.data(0));
+}
+
+float red_rate_cpp(const float* weights, size_t w_size) {
     using namespace std;
     size_t count = 0;
     for (size_t i = 0; i < w_size; ++i) {
@@ -80,6 +92,12 @@ float red_rate(const float* weights, size_t w_size) {
         }
     }
     return 100.0f * count / w_size;
+}
+
+float red_rate(py::array_t<float> weights_np) {
+    auto weights = weights_np.unchecked<1>();
+    size_t w_size = weights.shape(0);
+    return red_rate_cpp(weights.data(0), w_size);
 }
 
 float fitness(py::array_t<float> weights_np, py::array_t<float> X_train_np, py::array_t<int> y_train_np) {
@@ -92,8 +110,8 @@ float fitness(py::array_t<float> weights_np, py::array_t<float> X_train_np, py::
     size_t n = X_train.shape(0);
     size_t d = X_train.shape(1);
 
-    float clas = clas_rate(weights.data(0), w_size, X_train.data(0, 0), n, d, y_train.data(0));
-    float red = red_rate(weights.data(0), w_size);
+    float clas = clas_rate_cpp(weights.data(0), w_size, X_train.data(0, 0), n, d, y_train.data(0));
+    float red = red_rate_cpp(weights.data(0), w_size);
 
     return 0.75f * clas + 0.25f * red;
 }
@@ -148,6 +166,10 @@ PYBIND11_MODULE(utils, m) {
     m.doc() = "Módulo de utilidades CPP";
     m.def("fitness", &fitness, "Calcula la función fitness combinada", 
           py::arg("weights"), py::arg("X_train"), py::arg("y_train"));
+    m.def("clas_rate", &clas_rate, "Calcula la tasa de clasificación",
+            py::arg("weights"), py::arg("X_train"), py::arg("y_train"));
+    m.def("red_rate", &red_rate, "Calcula la tasa de reducción",
+            py::arg("weights"));
     m.def("fitness_tsp", &fitness_tsp, "Calcula la función fitness para TSP",
             py::arg("distances"), py::arg("solution"));
 }

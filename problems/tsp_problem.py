@@ -1,12 +1,21 @@
 import problems.problem as problem
 import utils, utils_omp, utils_gpu
 import cupy as cp
+import numpy as np
 
 class TSPProblem(problem.Problem):
     def __init__(self, distances, blocking=True):
         self.distances = distances
         self.n_cities = len(distances)
         self.distances_gpu = cp.asarray(distances, dtype=cp.float32, blocking=blocking, order='C')
+
+    def generate_solution(self, num_samples=1):
+        if num_samples == 1:
+            return np.arange(self.n_cities).astype(np.int32)
+        else:
+            base_perm = np.tile(np.arange(self.n_cities), (num_samples, 1)).astype(np.int32)
+            np.apply_along_axis(np.random.shuffle, 1, base_perm)
+            return base_perm
 
     def fitness(self, solution):
         return utils.fitness_tsp(self.distances, solution)
