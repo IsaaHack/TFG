@@ -29,7 +29,6 @@ class ClasProblem(problem.Problem):
     def fitness_gpu(self, solution):
         solution_gpu = cp.asarray(solution, dtype=cp.float32, blocking=True, order='C')
 
-        utils_gpu.warmup()
         return utils_gpu.fitness_cuda(
                 utils_gpu.create_capsule(solution_gpu.data.ptr),
                 utils_gpu.create_capsule(self.X_gpu.data.ptr),
