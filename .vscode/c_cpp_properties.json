@@ -6,9 +6,8 @@
                 "${workspaceFolder}/**",
                 "/usr/include",
                 "/usr/local/include",
-                "/usr/include/x86_64-linux-gnu/mpich",
-                "/usr/local/lib/python3.11/dist-packages/pybind11/include",
-                "/usr/include/python3.11"
+                "/home/isaac/.local/lib/python3.*/site-packages/pybind11/include",
+                "/usr/include/python3.12"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++",
