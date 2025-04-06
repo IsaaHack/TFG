@@ -51,7 +51,7 @@ __global__ void tsp_fitness_kernel_simple(
     int to = solution[(tid + 1) % n];  // Manejo circular automático
 
     // Acceso directo a memoria global
-    partial_sums[tid] = distances[from * n + to];
+    partial_sums[tid] = __ldg(&distances[from * n + to]);
 }
 
 __global__ void tsp_fitness_kernel(const float* __restrict__ distances, const int* __restrict__ solution, float* __restrict__ partial_sums, int n) {
@@ -106,9 +106,19 @@ float fitness_tsp_cuda(py::capsule distances_capsule, py::capsule solution_capsu
 
 // Kernel para filtrar pesos y características
 __global__ void filter_kernel(const float* weights, int* valid_indices, int* valid_count, int total_features) {
+    extern __shared__ int sdata[];
+    
+    int tid = threadIdx.x;
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Cargar datos en memoria compartida
     if (idx < total_features) {
-        if (weights[idx] >= THRESHOLD) {
+        sdata[tid] = (weights[idx] >= THRESHOLD) ? 1 : 0;
+    }
+    __syncthreads();
+
+    if (idx < total_features) {
+        if (sdata[tid]) {
             int pos = atomicAdd(valid_count, 1);
             valid_indices[pos] = idx;
         }
@@ -116,20 +126,26 @@ __global__ void filter_kernel(const float* weights, int* valid_indices, int* val
 }
 
 // Kernel para calcular distancias euclidianas ponderadas
-__global__ void distance_kernel(const float* X, const float* weights, 
+__global__ void distance_kernel(const float* __restrict__ X, const float* __restrict__ weights, 
                                float* distances, int num_samples, 
-                               int num_features, const int* valid_indices, 
+                               int num_features, const int* __restrict__ valid_indices, 
                                int valid_features) {
     int i = blockIdx.y * blockDim.y + threadIdx.y;
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     
     if (i < num_samples && j < num_samples && i < j) {
         float sum = 0.0f;
+
+        // Cache X[i * num_features + feature_idx] en registros
         for (int k = 0; k < valid_features; ++k) {
-            int feature_idx = valid_indices[k];
-            float diff = X[i * num_features + feature_idx] - X[j * num_features + feature_idx];
-            sum += weights[feature_idx] * diff * diff;
+            int feature_idx = __ldg(&valid_indices[k]); // Lectura optimizada
+            float xi = __ldg(&X[i * num_features + feature_idx]);
+            float xj = __ldg(&X[j * num_features + feature_idx]);
+            float w  = __ldg(&weights[feature_idx]);
+            float diff = xi - xj;
+            sum += w * diff * diff;
         }
+
         float dist = sqrtf(sum);
         distances[i * num_samples + j] = dist;
         distances[j * num_samples + i] = dist;
@@ -137,14 +153,15 @@ __global__ void distance_kernel(const float* X, const float* weights,
 }
 
 // Kernel para encontrar vecinos más cercanos
-__global__ void nearest_neighbor_kernel(const float* distances, int* predictions, int num_samples) {
+__global__ void nearest_neighbor_kernel(const float* __restrict__ distances, int* predictions, int num_samples) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < num_samples) {
         float min_dist = INFINITY;
         int min_idx = -1;
         for (int j = 0; j < num_samples; ++j) {
-            if (i != j && distances[i * num_samples + j] < min_dist) {
-                min_dist = distances[i * num_samples + j];
+            float dist = distances[j * num_samples + i];
+            if (i != j && dist < min_dist) {
+                min_dist = dist;
                 min_idx = j;
             }
         }
@@ -153,11 +170,40 @@ __global__ void nearest_neighbor_kernel(const float* distances, int* predictions
 }
 
 // Kernel para calcular precisión
-__global__ void accuracy_kernel(const int* predictions, const int* y_train, int* correct, int num_samples) {
+__global__ void accuracy_kernel(const int* __restrict__ predictions, const int* __restrict__ y_train, int* correct, int num_samples) {
+    extern __shared__ int sdata[];
+    int *s_y_train = sdata;
+    int *s_predictions = sdata + blockDim.x;
+
+    int tid = threadIdx.x;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Cargar datos en memoria compartida
     if (i < num_samples) {
-        if (y_train[predictions[i]] == y_train[i]) {
-            atomicAdd(correct, 1);
+        s_y_train[tid] = y_train[i];
+        s_predictions[tid] = y_train[predictions[i]];
+    }
+    __syncthreads();
+
+    int correct_count = 0;
+    if (i < num_samples) {
+        if (s_y_train[tid] == s_predictions[tid]) {
+            correct_count = 1;
+        }
+
+        int *s_correct = sdata;
+        s_correct[tid] = correct_count;
+        __syncthreads();
+
+        // Reducción en memoria compartida
+        for (int s = blockDim.x / 2; s > 0; s >>= 1) {
+            if (tid < s) {
+                s_correct[tid] += s_correct[tid + s];
+            }
+            __syncthreads();
+        }
+        if (tid == 0) {
+            atomicAdd(correct, s_correct[0]);
         }
     }
 }
@@ -172,6 +218,7 @@ float clas_rate_cuda(const thrust::device_vector<float>& d_weights,
     
     int blockSize = 256;
     int gridSize = (num_features + blockSize - 1) / blockSize;
+    size_t smSize = blockSize * sizeof(int);
     
     filter_kernel<<<gridSize, blockSize>>>(thrust::raw_pointer_cast(d_weights.data()),
                                          thrust::raw_pointer_cast(d_valid_indices.data()),
@@ -203,10 +250,11 @@ float clas_rate_cuda(const thrust::device_vector<float>& d_weights,
     
     // 4. Calcular precisión
     thrust::device_vector<int> d_correct(1, 0);
-    accuracy_kernel<<<gridSize, blockSize>>>(thrust::raw_pointer_cast(d_predictions.data()),
-                                           thrust::raw_pointer_cast(d_y_train.data()),
-                                           thrust::raw_pointer_cast(d_correct.data()),
-                                           num_samples);
+    smSize = blockSize * 2 * sizeof(int);
+    accuracy_kernel<<<gridSize, blockSize, smSize>>>(thrust::raw_pointer_cast(d_predictions.data()),
+                                                    thrust::raw_pointer_cast(d_y_train.data()),
+                                                    thrust::raw_pointer_cast(d_correct.data()),
+                                                    num_samples);
     
     cudaDeviceSynchronize();
     return 100.0f * d_correct[0] / num_samples;

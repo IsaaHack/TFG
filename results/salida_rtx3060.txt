@@ -1,42 +1,68 @@
 X_train shape: (1797, 64)
 y_train shape: (1797,)
 ----------------Fitness de clasificación-------------------
-Fitness CPU: 76.5240249633789
-Time (CPU): 0.054841s ± 0.001861s
+Fitness CPU: 77.01312255859375
+Time (CPU): 0.054253s ± 0.001429s
 -----------------------------------------------------------
-Fitness OpenMP: 76.5240249633789
-Time (OpenMP): 0.015683s ± 0.004272s
+Fitness OpenMP: 77.01312255859375
+Time (OpenMP): 0.014873s ± 0.005573s
 -----------------------------------------------------------
-Fitness GPU: 76.5240249633789
-Time (GPU): 0.002481s ± 0.000543s
+Fitness GPU: 77.01312255859375
+Time (GPU): 0.002401s ± 0.000419s
 -----------------------------------------------------------
-Speedup CPU vs OpenMP: 3.50x
-Speedup CPU vs GPU: 22.10x
-Speedup OpenMP vs GPU: 6.32x
+Speedup CPU vs OpenMP: 3.65x
+Speedup CPU vs GPU: 22.60x
+Speedup OpenMP vs GPU: 6.19x
 -----------------------------------------------------------
 -----------------------Fitness de TSP------------------------
-Number of cities: 20000
-Distance matrix shape: (20000, 20000)
+Number of cities: 100
+Distance matrix shape: (100, 100)
 ---------------------------------------------------------
-Fitness CPU: -1039176.75
-Time (CPU): 0.000051s ± 0.000071s
+Fitness CPU: -5427.56201171875
+Time (CPU): 0.000001s ± 0.000002s
 ---------------------------------------------------------
-Fitness OpenMP: -1039109.1875
-Time (OpenMP): 0.000019s ± 0.000064s
+Fitness OpenMP: -5373.53466796875
+Time (OpenMP): 0.000026s ± 0.000142s
 ---------------------------------------------------------
-Fitness GPU: -1039176.75
-Time (GPU): 0.000208s ± 0.000474s
+Fitness GPU: -5427.56201171875
+Time (GPU): 0.000096s ± 0.000017s
 ---------------------------------------------------------
-Speedup CPU vs OpenMP: 2.65x
-Speedup CPU vs GPU: 0.24x
-Speedup OpenMP vs GPU: 0.09x
+Speedup CPU vs OpenMP: 0.06x
+Speedup CPU vs GPU: 0.01x
+Speedup OpenMP vs GPU: 0.27x
 ---------------------------------------------------------
 ..........................ALGORITMS..........................
 ---------------------------GA-------------------------------
 X_train shape: (1797, 64)
 y_train shape: (1797,)
-Starting GA...
-Time: 18.704887866973877
+Starting GA Clas...
+Generation 30/300 - Best fitness: 82.7473
+Generation 60/300 - Best fitness: 85.2312
+Generation 90/300 - Best fitness: 86.7937
+Generation 120/300 - Best fitness: 88.3980
+Generation 150/300 - Best fitness: 88.8303
+Generation 180/300 - Best fitness: 89.2627
+Generation 210/300 - Best fitness: 90.0440
+Generation 240/300 - Best fitness: 90.6165
+Generation 270/300 - Best fitness: 90.7417
+Generation 300/300 - Best fitness: 90.7417
+Time: 18.925724744796753
 Classification rate: 97.55147552490234
 Reduction rate: 70.3125
 Fitness from GA: 90.74172973632812
+-----------------------------------------------------------
+Starting GA TSP...
+Generation 1000/10000 - Best fitness: -1102.7579
+Generation 2000/10000 - Best fitness: -963.9882
+Generation 3000/10000 - Best fitness: -879.5222
+Generation 4000/10000 - Best fitness: -836.8452
+Generation 5000/10000 - Best fitness: -817.2292
+Generation 6000/10000 - Best fitness: -811.7243
+Generation 7000/10000 - Best fitness: -799.0902
+Generation 8000/10000 - Best fitness: -797.6176
+Generation 9000/10000 - Best fitness: -797.6176
+Generation 10000/10000 - Best fitness: -797.6176
+Time: 263.1203808784485
+Fitness from GA: 797.6175537109375
+Verifying path...
+Path is valid

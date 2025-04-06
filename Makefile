@@ -25,7 +25,7 @@ cuda: utils_gpu.cu
 	nvcc -O3 -shared -std=c++14 --compiler-options -fPIC --extended-lambda \
 	$(PYTHON_INCLUDES) \
 	utils_gpu.cu -o "utils_gpu$(PYTHON_SUFFIX)" \
-	-lcudart -L/usr/local/cuda/lib64
+	-lcudart -L/usr/local/cuda/lib64 -lcublas
 
 clean:
 	$(PYTHON_CMD) setup.py clean
