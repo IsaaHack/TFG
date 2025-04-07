@@ -2,8 +2,17 @@
 
 .PHONY: check-python
 
-# Detectar el comando de Python (python o python3)
-PYTHON_CMD := $(shell command -v python >/dev/null 2>&1 && echo python || echo python3)
+# Intenta detectar python o python3, pero fuerza python3 si la versión es Python 2
+RAW_PYTHON := $(shell command -v python >/dev/null 2>&1 && echo python || echo python3)
+PYTHON_VERSION_RAW := $(shell $(RAW_PYTHON) --version 2>&1 | cut -d ' ' -f 2)
+PYTHON_MAJOR := $(shell echo $(PYTHON_VERSION_RAW) | cut -d '.' -f 1)
+
+ifeq ($(PYTHON_MAJOR),2)
+    PYTHON_CMD := python3
+else
+    PYTHON_CMD := $(RAW_PYTHON)
+endif
+
 PYTHON_VERSION := $(shell $(PYTHON_CMD) --version 2>&1 | cut -d ' ' -f 2 | cut -d '.' -f 1-2)
 PYTHON_INCLUDES := $(shell $(PYTHON_CMD) -m pybind11 --includes)
 PYTHON_SUFFIX := $(shell python$(PYTHON_VERSION)-config --extension-suffix)

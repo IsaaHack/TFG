@@ -4,10 +4,12 @@ import cupy as cp
 import numpy as np
 
 class TSPProblem(problem.Problem):
-    def __init__(self, distances, blocking=True):
+    def __init__(self, distances):
+        self.distances_gpu = cp.asarray(distances, dtype=cp.float32, order='C')
         self.distances = distances
         self.n_cities = len(distances)
-        self.distances_gpu = cp.asarray(distances, dtype=cp.float32, blocking=blocking, order='C')
+
+        cp.cuda.Device().synchronize()
 
     def generate_solution(self, num_samples=1):
         if num_samples == 1:
@@ -24,7 +26,8 @@ class TSPProblem(problem.Problem):
         return utils_omp.fitness_tsp_omp(self.distances, solution)
     
     def fitness_gpu(self, solution):
-        solution_gpu = cp.asarray(solution, dtype=cp.int32, blocking=True, order='C')
+        solution_gpu = cp.asarray(solution, dtype=cp.int32, order='C')
+        cp.cuda.Device().synchronize()
 
         return utils_gpu.fitness_tsp_cuda(
                 utils_gpu.create_capsule(self.distances_gpu.data.ptr),

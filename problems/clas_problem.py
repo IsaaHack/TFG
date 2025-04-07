@@ -3,16 +3,22 @@ import utils, utils_omp, utils_gpu
 import cupy as cp
 import numpy as np
 
+#Ver version cupy
+print("CUPY VERSION: ", cp.__version__)
+
 SQRT_03 = np.sqrt(0.3)
 
 class ClasProblem(problem.Problem):
-    def __init__(self, X, Y, blocking=True):
+    def __init__(self, X, Y, threshold=0.1):
+        self.X_gpu = cp.asarray(X, dtype=cp.float32, order='C')
+        self.Y_gpu = cp.asarray(Y, dtype=cp.int32, order='C')
         self.X = X
         self.Y = Y
-        self.X_gpu = cp.asarray(X, dtype=cp.float32, blocking=blocking, order='C')
-        self.Y_gpu = cp.asarray(Y, dtype=cp.int32, blocking=blocking, order='C')
         self.n_samples = len(X)
         self.n_features = len(X[0])
+        self.threshold = threshold
+
+        cp.cuda.Device().synchronize()
 
     def generate_solution(self, num_samples=1):
         if num_samples == 1:
@@ -27,7 +33,8 @@ class ClasProblem(problem.Problem):
         return utils_omp.fitness_omp(solution, self.X, self.Y)
     
     def fitness_gpu(self, solution):
-        solution_gpu = cp.asarray(solution, dtype=cp.float32, blocking=True, order='C')
+        solution_gpu = cp.asarray(solution, dtype=cp.float32, order='C')
+        cp.cuda.Device().synchronize()  # Sincroniza el dispositivo antes de llamar a la función CUDA
 
         return utils_gpu.fitness_cuda(
                 utils_gpu.create_capsule(solution_gpu.data.ptr),

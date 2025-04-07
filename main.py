@@ -4,6 +4,8 @@ import time
 from sklearn.datasets import load_digits
 import timeit
 
+np.random.seed(42)  # Para reproducibilidad
+
 digits = load_digits()
 X_train = np.array(digits.data, dtype=np.float32)
 y_train = np.array(digits.target, dtype=np.int32)
@@ -76,7 +78,6 @@ import itertools
 import numba
 
 def generate_distance_matrix(n_cities):
-    np.random.seed(42)  # Para reproducibilidad
     # Genera coordenadas aleatorias (x, y) para cada ciudad en un rango de 0 a 100
     cities = np.random.rand(n_cities, 2) * 100
 
