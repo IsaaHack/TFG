@@ -2,39 +2,54 @@ X_train shape: (1797, 64)
 y_train shape: (1797,)
 ----------------Fitness de clasificación-------------------
 Fitness CPU: 76.62249755859375
-Time (CPU): 3.438537s ± 0.068841s
+Time (CPU): 3.575826s ± 0.021034s
 -----------------------------------------------------------
 Fitness OpenMP: 76.62249755859375
-Time (OpenMP): 0.861590s ± 0.057777s
+Time (OpenMP): 0.833625s ± 0.010027s
 -----------------------------------------------------------
 Fitness GPU: 76.62249755859375
-Time (GPU): 0.127285s ± 0.015910s
+Time (GPU): 0.128320s ± 0.018629s
 -----------------------------------------------------------
-Speedup CPU vs OpenMP: 3.99x
-Speedup CPU vs GPU: 27.01x
-Speedup OpenMP vs GPU: 6.77x
+Speedup CPU vs OpenMP: 4.29x
+Speedup CPU vs GPU: 27.87x
+Speedup OpenMP vs GPU: 6.50x
 -----------------------------------------------------------
 -----------------------Fitness de TSP------------------------
 Number of cities: 100
 Distance matrix shape: (100, 100)
 ---------------------------------------------------------
 Fitness CPU: -5527.8564453125
-Time (CPU): 0.001038s ± 0.000091s
+Time (CPU): 0.000887s ± 0.000020s
 ---------------------------------------------------------
 Fitness OpenMP: -5520.623046875
-Time (OpenMP): 0.006215s ± 0.001339s
+Time (OpenMP): 0.004539s ± 0.000187s
 ---------------------------------------------------------
 Fitness GPU: -5527.8564
-Time (GPU): 0.000207s ± 0.000082s
+Time (GPU): 0.000186s ± 0.000035s
 ---------------------------------------------------------
-Speedup CPU vs OpenMP: 0.17x
-Speedup CPU vs GPU: 5.02x
-Speedup OpenMP vs GPU: 30.04x
+Speedup CPU vs OpenMP: 0.20x
+Speedup CPU vs GPU: 4.77x
+Speedup OpenMP vs GPU: 24.39x
 ---------------------------------------------------------
 ..........................ALGORITMS..........................
 ---------------------------GA-------------------------------
 X_train shape: (1797, 64)
 y_train shape: (1797,)
+Starting GA Clas...
+Generation 30/300 - Best fitness: 82.7473
+Generation 60/300 - Best fitness: 85.2312
+Generation 90/300 - Best fitness: 86.7937
+Generation 120/300 - Best fitness: 88.3980
+Generation 150/300 - Best fitness: 88.8303
+Generation 180/300 - Best fitness: 89.2627
+Generation 210/300 - Best fitness: 90.0440
+Generation 240/300 - Best fitness: 90.6165
+Generation 270/300 - Best fitness: 90.7417
+Generation 300/300 - Best fitness: 90.7417
+Time: 20.683907985687256
+Classification rate: 97.55147552490234
+Reduction rate: 70.3125
+Fitness from GA: 90.74172973632812
 -----------------------------------------------------------
 Starting GA TSP...
 Generation 10/100 - Best fitness: -3988.8069
@@ -47,7 +62,7 @@ Generation 70/100 - Best fitness: -2617.3669
 Generation 80/100 - Best fitness: -2513.5278
 Generation 90/100 - Best fitness: -2398.6523
 Generation 100/100 - Best fitness: -2330.4792
-Time: 19.797775268554688
+Time: 19.38626480102539
 Fitness from GA: 2330.4792
 Verifying path...
 Path is valid
