@@ -37,21 +37,25 @@ class ClasProblem(problem.Problem):
     
     def fitness_gpu(self, solutions):
         solutions_gpu = cp.asarray(solutions, dtype=cp.float32, order='C')
+
+        X_capsule = utils_gpu.create_capsule(self.X_gpu.data.ptr)
+        Y_capsule = utils_gpu.create_capsule(self.Y_gpu.data.ptr)
+        
         cp.cuda.Device().synchronize()  # Sincroniza el dispositivo antes de llamar a la función CUDA
 
         if len(solutions.shape) == 1:
             return utils_gpu.fitness_cuda(
                     utils_gpu.create_capsule(solutions_gpu.data.ptr),
-                    utils_gpu.create_capsule(self.X_gpu.data.ptr),
-                    utils_gpu.create_capsule(self.Y_gpu.data.ptr),
+                    X_capsule,
+                    Y_capsule,
                     self.n_samples,
                     self.n_features
             )
         else:
             return np.array([utils_gpu.fitness_cuda(
                     utils_gpu.create_capsule(solutions_gpu[i].data.ptr),
-                    utils_gpu.create_capsule(self.X_gpu.data.ptr),
-                    utils_gpu.create_capsule(self.Y_gpu.data.ptr),
+                    X_capsule,
+                    Y_capsule,
                     self.n_samples,
                     self.n_features
             ) for i in range(solutions.shape[0])])
@@ -62,22 +66,35 @@ class ClasProblem(problem.Problem):
     def red_rate(self, solution):
         return utils.red_rate(solution)
     
-    def crossover(self, population, crossover_rate, alpha : float = 0.3):
-        estimated_crossovers : int = np.floor(crossover_rate * len(population) / 2).astype(int)
+    def crossover(self, population, crossover_rate, alpha: float = 0.3):
+        n_pairs = int(np.floor(crossover_rate * len(population) / 2))
+        if n_pairs == 0:
+            return
 
-        for i in range(estimated_crossovers):
-            parent1 : int = 2*i
-            parent2 : int = parent1 + 1
+        # Índices de los padres en parejas consecutivas
+        idx_even = np.arange(0, 2 * n_pairs, 2)
+        idx_odd = np.arange(1, 2 * n_pairs, 2)
 
-            c_max : np.ndarray[float] = np.maximum(population[parent1], population[parent2])
-            c_min : np.ndarray[float] = np.minimum(population[parent1], population[parent2])
+        # Extrae los padres en forma vectorizada
+        parents1 = population[idx_even]
+        parents2 = population[idx_odd]
 
-            I : np.ndarray[float] = c_max - c_min
+        # Calcula c_max, c_min e I para cada par de padres
+        c_max = np.maximum(parents1, parents2)
+        c_min = np.minimum(parents1, parents2)
+        I = c_max - c_min
 
-            population[parent1] = np.random.uniform(c_min - alpha * I, c_max + alpha * I)
-            population[parent2] = np.random.uniform(c_min - alpha * I, c_max + alpha * I)
+        # Genera dos conjuntos de descendientes utilizando la distribución uniforme
+        offspring1 = np.random.uniform(c_min - alpha * I, c_max + alpha * I)
+        offspring2 = np.random.uniform(c_min - alpha * I, c_max + alpha * I)
 
-        population[:2*estimated_crossovers] = np.clip(population[:2*estimated_crossovers], 0, 1)
+        # Asigna los descendientes de vuelta a la población
+        population[idx_even] = offspring1
+        population[idx_odd] = offspring2
+
+        # Asegura que todos los valores estén en el rango [0,1]
+        population[:2 * n_pairs] = np.clip(population[:2 * n_pairs], 0, 1)
+
 
 
     def mutation(self, population, mutation_rate):

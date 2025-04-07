@@ -2,13 +2,14 @@ from algoritms.algoritm import Algoritm
 import numpy as np
 
 class GA(Algoritm):
-    def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, generations=100, seed=None):
+    def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, generations=100, seed=None, tournament_size=3):
         self.problem = problem
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
         self.generations = generations
         self.seed = seed
+        self.tournament_size = tournament_size
 
         self.required_methods = ['fitness', 'generate_solution', 'mutation', 'crossover']
         self.check_required_methods()
@@ -24,7 +25,7 @@ class GA(Algoritm):
     def selection(self, population, fitnesess):
         new_population = np.empty_like(population)
 
-        random_indexes = np.random.randint(0, population.shape[0], size=(population.shape[0], 3))
+        random_indexes = np.random.randint(0, population.shape[0], size=(population.shape[0], self.tournament_size))
         best_in_each_group = np.argmax(fitnesess[random_indexes], axis=1)
         new_population = population[random_indexes[np.arange(population.shape[0]), best_in_each_group]]
 

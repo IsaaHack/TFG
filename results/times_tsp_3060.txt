@@ -1,0 +1,3 @@
+GPU: 3.46s
+CPU OpenMP: 4,24s
+CPU: 3.43s

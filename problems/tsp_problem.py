@@ -39,12 +39,17 @@ class TSPProblem(problem.Problem):
 
         solutions_gpu = cp.asarray(solutions, dtype=cp.int32, order='C')
         fitness_gpu = cp.empty(solutions.shape[0], dtype=cp.float32, order='C')
+
+        distances_capsule = utils_gpu.create_capsule(self.distances_gpu.data.ptr)
+        solutions_capsule = utils_gpu.create_capsule(solutions_gpu.data.ptr)
+        fitness_capsule = utils_gpu.create_capsule(fitness_gpu.data.ptr)
+
         cp.cuda.Device().synchronize()
 
         utils_gpu.fitness_tsp_cuda(
-                utils_gpu.create_capsule(self.distances_gpu.data.ptr),
-                utils_gpu.create_capsule(solutions_gpu.data.ptr),
-                utils_gpu.create_capsule(fitness_gpu.data.ptr),
+                distances_capsule,
+                solutions_capsule,
+                fitness_capsule,
                 self.n_cities,
                 fitness_gpu.shape[0]
         )
@@ -55,51 +60,70 @@ class TSPProblem(problem.Problem):
             return cp.asnumpy(fitness_gpu)
     
     def crossover(self, population, crossover_rate):
-        # Calcula el número de cruces a realizar (por parejas)
-        estimated_crossovers = int(np.floor(crossover_rate * len(population) / 2))
+        num_crossovers = int(np.floor(crossover_rate * len(population) / 2))
 
-        for k in range(estimated_crossovers):
+        for k in range(num_crossovers):
             parent1 = 2 * k
             parent2 = parent1 + 1
 
-            # Order Crossover (OX)
+            # Selecciona aleatoriamente dos índices para el segmento
             start, end = np.sort(np.random.choice(self.n_cities, size=2, replace=False))
-            child1 = np.full(self.n_cities, -1, dtype=np.int32)  # Inicializa el hijo con -1
-            child2 = np.full(self.n_cities, -1, dtype=np.int32)  # Inicializa el hijo con -1
-
+            
+            # Inicializa los hijos con -1
+            child1 = np.full(self.n_cities, -1, dtype=np.int32)
+            child2 = np.full(self.n_cities, -1, dtype=np.int32)
+            
             # Copia el segmento seleccionado de cada padre
             child1[start:end+1] = population[parent1, start:end+1]
             child2[start:end+1] = population[parent2, start:end+1]
-
-            p1_index = (end + 1) % self.n_cities
-            p2_index = (end + 1) % self.n_cities
-
-            # Rellena los hijos con las ciudades faltantes en el orden de aparición
-            for j in range(self.n_cities):
-                if population[parent2, j] not in child1:
-                    child1[p1_index] = population[parent2, j]
-                    p1_index = (p1_index + 1) % self.n_cities
-
-                if population[parent1, j] not in child2:
-                    child2[p2_index] = population[parent1, j]
-                    p2_index = (p2_index + 1) % self.n_cities
-
-            # Reemplaza los padres en la población por los nuevos hijos
+            
+            # Define los índices restantes (excluyendo el segmento)
+            # Se recorre de end+1 hasta n_cities-1 y de 0 hasta start-1
+            remaining_idx = np.concatenate((np.arange(end+1, self.n_cities), np.arange(0, start)))
+            
+            # Para child1: Toma las ciudades de parent2 que no estén en el segmento heredado de parent1
+            segment_child1 = population[parent1, start:end+1]
+            mask1 = ~np.isin(population[parent2, :], segment_child1)
+            remaining_genes1 = population[parent2, :][mask1]
+            
+            # Rellena child1 en los índices restantes manteniendo el orden
+            child1[remaining_idx] = remaining_genes1[:len(remaining_idx)]
+            
+            # Para child2: Toma las ciudades de parent1 que no estén en el segmento heredado de parent2
+            segment_child2 = population[parent2, start:end+1]
+            mask2 = ~np.isin(population[parent1, :], segment_child2)
+            remaining_genes2 = population[parent1, :][mask2]
+            
+            # Rellena child2 en los índices restantes manteniendo el orden
+            child2[remaining_idx] = remaining_genes2[:len(remaining_idx)]
+            
+            # Reemplaza los padres por los hijos en la población
             population[parent1] = child1
             population[parent2] = child2
 
 
+
     def mutation(self, population, mutation_rate):
         n_individuals = population.shape[0]
-        # Calcula la cantidad de individuos a mutar
         estimated_mutations = int(mutation_rate * n_individuals)
+        if estimated_mutations == 0:
+            return
+
         # Selecciona aleatoriamente los índices de individuos a mutar sin repetición
         individual_indices = np.random.choice(n_individuals, size=estimated_mutations, replace=False)
         
-        for i in individual_indices:
-            # Selecciona dos índices de ciudades aleatorios para swap mutation
-            index1, index2 = np.random.choice(self.n_cities, size=2, replace=False)
-            population[i][index1], population[i][index2] = population[i][index2], population[i][index1]
+        # Genera índices aleatorios para swap mutation:
+        # Se utiliza np.random.randint para generar el primer índice.
+        indices1 = np.random.randint(0, self.n_cities, size=estimated_mutations)
+        # Para el segundo índice, se generan números entre 0 y n_cities-2. 
+        # Luego, si el índice generado es mayor o igual que el índice 1 correspondiente, se le suma 1 para evitar la repetición.
+        indices2 = np.random.randint(0, self.n_cities - 1, size=estimated_mutations)
+        indices2 = np.where(indices2 >= indices1, indices2 + 1, indices2)
+
+        # Realiza el intercambio vectorizado
+        temp = population[individual_indices, indices1].copy()
+        population[individual_indices, indices1] = population[individual_indices, indices2]
+        population[individual_indices, indices2] = temp
         
             # Swap mutation
             # population[i][index1] = np.random.randint(self.n_cities)
