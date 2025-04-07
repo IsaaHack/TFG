@@ -75,7 +75,6 @@ print("-----------------------Fitness de TSP------------------------")
 from problems.tsp_problem import TSPProblem
 from scipy.spatial.distance import cdist
 import itertools
-import numba
 
 def generate_distance_matrix(n_cities):
     # Genera coordenadas aleatorias (x, y) para cada ciudad en un rango de 0 a 100
