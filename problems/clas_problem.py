@@ -3,9 +3,6 @@ import utils, utils_omp, utils_gpu
 import cupy as cp
 import numpy as np
 
-#Ver version cupy
-print("CUPY VERSION: ", cp.__version__)
-
 SQRT_03 = np.sqrt(0.3)
 
 class ClasProblem(problem.Problem):
@@ -26,23 +23,38 @@ class ClasProblem(problem.Problem):
         else:
             return np.random.uniform(0, 1, size=(num_samples, self.n_features)).astype(np.float32)
 
-    def fitness(self, solution):
-        return utils.fitness(solution, self.X, self.Y)
+    def fitness(self, solutions):
+        if len(solutions.shape) == 1:
+            return utils.fitness(solutions, self.X, self.Y)
+        else:
+            return np.array([utils.fitness(solution, self.X, self.Y) for solution in solutions])
     
-    def fitness_omp(self, solution):
-        return utils_omp.fitness_omp(solution, self.X, self.Y)
+    def fitness_omp(self, solutions):
+        if len(solutions.shape) == 1:
+            return utils_omp.fitness_omp(solutions, self.X, self.Y)
+        else:
+            return np.array([utils_omp.fitness_omp(solution, self.X, self.Y) for solution in solutions])
     
-    def fitness_gpu(self, solution):
-        solution_gpu = cp.asarray(solution, dtype=cp.float32, order='C')
+    def fitness_gpu(self, solutions):
+        solutions_gpu = cp.asarray(solutions, dtype=cp.float32, order='C')
         cp.cuda.Device().synchronize()  # Sincroniza el dispositivo antes de llamar a la función CUDA
 
-        return utils_gpu.fitness_cuda(
-                utils_gpu.create_capsule(solution_gpu.data.ptr),
-                utils_gpu.create_capsule(self.X_gpu.data.ptr),
-                utils_gpu.create_capsule(self.Y_gpu.data.ptr),
-                self.n_samples,
-                self.n_features
-        )
+        if len(solutions.shape) == 1:
+            return utils_gpu.fitness_cuda(
+                    utils_gpu.create_capsule(solutions_gpu.data.ptr),
+                    utils_gpu.create_capsule(self.X_gpu.data.ptr),
+                    utils_gpu.create_capsule(self.Y_gpu.data.ptr),
+                    self.n_samples,
+                    self.n_features
+            )
+        else:
+            return np.array([utils_gpu.fitness_cuda(
+                    utils_gpu.create_capsule(solutions_gpu[i].data.ptr),
+                    utils_gpu.create_capsule(self.X_gpu.data.ptr),
+                    utils_gpu.create_capsule(self.Y_gpu.data.ptr),
+                    self.n_samples,
+                    self.n_features
+            ) for i in range(solutions.shape[0])])
     
     def clas_rate(self, solution):
         return utils.clas_rate(solution, self.X, self.Y)

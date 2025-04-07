@@ -36,7 +36,7 @@ class GA(Algoritm):
         
         fitness_values = np.empty(self.population_size)
         fitness_values[0] = best_fit
-        fitness_values[1:] = np.apply_along_axis(self.problem.fitness_gpu, 1, new_population[1:])
+        fitness_values[1:] = self.problem.fitness_gpu(new_population[1:])
 
         return new_population, fitness_values
         
@@ -46,7 +46,7 @@ class GA(Algoritm):
             np.random.seed(self.seed)
 
         population = self.initialize_population()
-        fitness_values = np.apply_along_axis(self.problem.fitness_gpu, 1, population)
+        fitness_values = self.problem.fitness_gpu(population)
         actual_generation = 0
         best = np.copy(population[np.argmax(fitness_values)])
         best_fit = fitness_values[np.argmax(fitness_values)]
@@ -62,7 +62,7 @@ class GA(Algoritm):
             self.problem.mutation(new_population, self.mutation_rate)
 
             # Evaluate fitness
-            fitness_values = np.apply_along_axis(self.problem.fitness_gpu, 1, new_population)
+            fitness_values = self.problem.fitness_gpu(new_population)
 
             # Replace the worst individuals with the best from the previous generation(Elitism)
             best_new_index = np.argmax(fitness_values)

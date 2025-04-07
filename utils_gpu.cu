@@ -35,74 +35,50 @@ __global__ void warmup_kernel() {
     }
 }
 
-__global__ void tsp_fitness_kernel_simple(
+__global__ void tsp_fitness_kernel_multiple(
     const float* distances,
-    const int* solution,
-    float* partial_sums,
-    int n
+    const int* solutions,
+    float* fitness,
+    int n,
+    int num_solutions
 ) {
     // Índice global del hilo
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    const int *solution = solutions + tid * n;  
 
-    // Verificar límites
-    if (tid >= n) return;
+    if (tid < num_solutions) {
+        float sum = 0.0f;
 
-    // Obtener índices de la solución
-    int from = solution[tid];
-    int to = solution[(tid + 1) % n];  // Manejo circular automático
+        for(int i = 0; i < n-1; ++i) {
+            // Obtener índices de la solución
+            int from = __ldg(&solution[i]);
+            int to = __ldg(&solution[i + 1]);  // Manejo circular automático
+    
+            // Acceso directo a memoria global
+            sum += __ldg(&distances[from * n + to]);
+        }
 
-    // Acceso directo a memoria global
-    partial_sums[tid] = __ldg(&distances[from * n + to]);
-}
-
-__global__ void tsp_fitness_kernel(const float* __restrict__ distances, const int* __restrict__ solution, float* __restrict__ partial_sums, int n) {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-    // Precarga en memoria compartida
-    __shared__ int shared_sol[TILE_SIZE + 1];
-
-    if (tid < n) {
-        shared_sol[threadIdx.x] = solution[tid];
-        if (threadIdx.x == blockDim.x - 1 && tid + 1 < n)
-            shared_sol[blockDim.x] = solution[tid + 1];
+        //Hacer el camino circular
+        int from = __ldg(&solution[n - 1]);
+        int to = __ldg(&solution[0]);
+        sum += __ldg(&distances[from * n + to]);
+    
+        fitness[tid] = -sum;
     }
-    __syncthreads();
-
-    if (tid < n) {
-        int from = shared_sol[threadIdx.x];
-        int to = (threadIdx.x == blockDim.x - 1) ?
-        solution[(tid + 1) % n] : shared_sol[threadIdx.x + 1];
-
-        partial_sums[tid] = __ldg(&distances[from * n + to]);
-    }
+    
 }
 
 // Función wrapper que acepta punteros de GPU
-float fitness_tsp_cuda(py::capsule distances_capsule, py::capsule solution_capsule, int n) {
+void fitness_tsp_cuda(py::capsule distances_capsule, py::capsule solution_capsule, py::capsule fitness_capsule, int n, int num_solutions) {
     // Obtener punteros desde los objetos de GPU
     float* d_distances = static_cast<float*>(distances_capsule.get_pointer());
     int* d_solution = static_cast<int*>(solution_capsule.get_pointer());
-
-    // Reservar memoria para resultados
-    float* d_partial;
-    cudaMalloc(&d_partial, n * sizeof(float));
+    float* d_fitness = static_cast<float*>(fitness_capsule.get_pointer());
 
     // Lanzar kernel
     int blockSize = 256;
-    int gridSize = (n + blockSize - 1) / blockSize;
-    tsp_fitness_kernel_simple<<<gridSize, blockSize>>>(d_distances, d_solution, d_partial, n);
-
-    // Copiar resultado a CPU y sumar
-    vector<float> h_partial(n);
-    cudaMemcpy(h_partial.data(), d_partial, n * sizeof(float), cudaMemcpyDeviceToHost);
-
-    float total = 0.0f;
-    for(float val : h_partial) total += val;
-
-    // Liberar memoria
-    cudaFree(d_partial);
-
-    return -total;
+    int gridSize = (num_solutions + blockSize - 1) / blockSize;
+    tsp_fitness_kernel_multiple<<<gridSize, blockSize>>>(d_distances, d_solution, d_fitness, n, num_solutions);
 }
 
 // Kernel para filtrar pesos y características
@@ -353,7 +329,8 @@ py::capsule create_capsule(size_t ptr_address) {
 
 PYBIND11_MODULE(utils_gpu, m) {
     m.def("fitness_tsp_cuda", &fitness_tsp_cuda, "Calcular fitness del TSP usando CUDA",
-            py::arg("distances"), py::arg("solution"), py::arg("n"));
+            py::arg("distances"), py::arg("solution"), py::arg("fitness"),
+            py::arg("n"), py::arg("num_solutions"));
     m.def("fitness_cuda", &fitness_cuda, "Calcular fitness usando CUDA",
           py::arg("weights"), py::arg("X_train"), py::arg("y_train"),
           py::arg("num_samples"), py::arg("num_features"));

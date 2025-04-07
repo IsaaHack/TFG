@@ -19,21 +19,40 @@ class TSPProblem(problem.Problem):
             np.apply_along_axis(np.random.shuffle, 1, base_perm)
             return base_perm
 
-    def fitness(self, solution):
-        return utils.fitness_tsp(self.distances, solution)
+    def fitness(self, solutions):
+        if len(solutions.shape) == 1:
+            return utils.fitness_tsp(self.distances, solutions)
+        else:
+            return np.array([utils.fitness_tsp(self.distances, solution) for solution in solutions])
     
-    def fitness_omp(self, solution):
-        return utils_omp.fitness_tsp_omp(self.distances, solution)
+    def fitness_omp(self, solutions):
+        if len(solutions.shape) == 1:
+            return utils_omp.fitness_tsp_omp(self.distances, solutions)
+        else:
+            return np.array([self.fitness_omp(solution) for solution in solutions])
     
-    def fitness_gpu(self, solution):
-        solution_gpu = cp.asarray(solution, dtype=cp.int32, order='C')
+    def fitness_gpu(self, solutions):
+        unique = False
+        if len(solutions.shape) == 1:
+            solutions = np.expand_dims(solutions, axis=0)
+            unique = True
+
+        solutions_gpu = cp.asarray(solutions, dtype=cp.int32, order='C')
+        fitness_gpu = cp.empty(solutions.shape[0], dtype=cp.float32, order='C')
         cp.cuda.Device().synchronize()
 
-        return utils_gpu.fitness_tsp_cuda(
+        utils_gpu.fitness_tsp_cuda(
                 utils_gpu.create_capsule(self.distances_gpu.data.ptr),
-                utils_gpu.create_capsule(solution_gpu.data.ptr),
-                self.n_cities
-                )
+                utils_gpu.create_capsule(solutions_gpu.data.ptr),
+                utils_gpu.create_capsule(fitness_gpu.data.ptr),
+                self.n_cities,
+                fitness_gpu.shape[0]
+        )
+
+        if unique:
+            return cp.asnumpy(fitness_gpu)[0]
+        else:
+            return cp.asnumpy(fitness_gpu)
     
     def crossover(self, population, crossover_rate):
         # Calcula el número de cruces a realizar (por parejas)
