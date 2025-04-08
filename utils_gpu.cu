@@ -6,26 +6,19 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
-#include <thrust/device_vector.h>
-#include <thrust/transform.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/execution_policy.h>
 #include <thrust/count.h>
-#include <thrust/functional.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
-#include <thrust/gather.h>
 #include <cmath>
 
 namespace py = pybind11;
 using namespace std;
 
-#define TILE_SIZE 256
-#define NUM_STREAMS 2
-
-const double THRESHOLD = 0.1;
-const double CLASS_WEIGHT = 0.75;
-const double RED_WEIGHT = 0.25;
+const float THRESHOLD = 0.1;
+const float CLASS_WEIGHT = 0.75;
+const float RED_WEIGHT = 0.25;
 
 __global__ void warmup_kernel() {
     // Kernel vacío para calentar la GPU
@@ -102,6 +95,22 @@ __global__ void filter_kernel(const float* weights, int* valid_indices, int* val
     }
 }
 
+__global__ void obtain_matrix_filtered_kernel(const float *X, float *X_filtered,
+                                              const float *weights, float *weights_filtered,
+                                              const int *valid_indices, int num_samples,
+                                              int num_features, int valid_features)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < num_samples){
+        for (int j = 0; j < valid_features; ++j){
+            int feature_idx = __ldg(&valid_indices[j]); // Lectura optimizada
+            X_filtered[i * valid_features + j] = __ldg(&X[i * num_features + feature_idx]);
+            weights_filtered[j] = __ldg(&weights[feature_idx]);
+        }
+    }
+}
+
 // Kernel para calcular distancias euclidianas ponderadas
 __global__ void distance_kernel(const float* __restrict__ X, const float* __restrict__ weights,
                                float* distances, int num_samples,
@@ -143,9 +152,7 @@ __global__ void distance_kernel(const float* __restrict__ X, const float* __rest
         for (int k = 0; k < num_features; ++k) {
             float xi = __ldg(&X[i * num_features + k]);
             float xj = __ldg(&X[j * num_features + k]);
-            float w  = 0.0f;
-            if(weights[k] >= THRESHOLD)
-                w = __ldg(&weights[k]);
+            float w  = __ldg(&weights[k]);
             
             float diff = xi - xj;
             sum += w * diff * diff;
@@ -177,38 +184,28 @@ __global__ void nearest_neighbor_kernel(const float* __restrict__ distances, int
 // Kernel para calcular precisión
 __global__ void accuracy_kernel(const int* __restrict__ predictions, const int* __restrict__ y_train, int* correct, int num_samples) {
     extern __shared__ int sdata[];
-    int *s_y_train = sdata;
-    int *s_predictions = sdata + blockDim.x;
 
     int tid = threadIdx.x;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // Cargar datos en memoria compartida
-    if (i < num_samples) {
-        s_y_train[tid] = y_train[i];
-        s_predictions[tid] = y_train[predictions[i]];
-    }
-    __syncthreads();
-
     int correct_count = 0;
     if (i < num_samples) {
-        if (s_y_train[tid] == s_predictions[tid]) {
+        if (y_train[i] == y_train[predictions[i]]) {
             correct_count = 1;
         }
 
-        int *s_correct = sdata;
-        s_correct[tid] = correct_count;
+        sdata[tid] = correct_count;
         __syncthreads();
 
         // Reducción en memoria compartida
         for (int s = blockDim.x / 2; s > 0; s >>= 1) {
             if (tid < s) {
-                s_correct[tid] += s_correct[tid + s];
+                sdata[tid] += sdata[tid + s];
             }
             __syncthreads();
         }
         if (tid == 0) {
-            atomicAdd(correct, s_correct[0]);
+            atomicAdd(correct, sdata[0]);
         }
     }
 }
@@ -232,39 +229,45 @@ float clas_rate_cuda(const thrust::device_vector<float>& d_weights,
 
     cudaDeviceSynchronize();
     int valid_features = d_valid_count[0];
-    // thrust::host_vector<int> h_valid_indices(d_valid_indices);
+    
+    // 2. Obtener matriz y pesos filtrados
+    thrust::device_vector<float> d_X_filtered(num_samples * valid_features);
+    thrust::device_vector<float> d_weights_filtered(valid_features);
+    gridSize = (num_samples + blockSize - 1) / blockSize;
+    obtain_matrix_filtered_kernel<<<gridSize, blockSize>>>(thrust::raw_pointer_cast(d_X_train.data()),
+                                                            thrust::raw_pointer_cast(d_X_filtered.data()),
+                                                            thrust::raw_pointer_cast(d_weights.data()),
+                                                            thrust::raw_pointer_cast(d_weights_filtered.data()),
+                                                            thrust::raw_pointer_cast(d_valid_indices.data()),
+                                                            num_samples, num_features, valid_features);
 
-    // for (int i = 0; i < num_features; ++i) {
-    //     printf("valid_indices[%d] = %d\n", i, h_valid_indices[i]);
-    // }
-
-    // 2. Calcular matriz de distancias
+    // 3. Calcular matriz de distancias
     thrust::device_vector<float> d_distances(num_samples * num_samples, INFINITY);
     dim3 block(16, 16);
     dim3 grid((num_samples + block.x - 1) / block.x,
              (num_samples + block.y - 1) / block.y);
 
-    distance_kernel<<<grid, block>>>(thrust::raw_pointer_cast(d_X_train.data()),
-                                   thrust::raw_pointer_cast(d_weights.data()),
-                                   thrust::raw_pointer_cast(d_distances.data()),
-                                   num_samples, num_features,
-                                   thrust::raw_pointer_cast(d_valid_indices.data()),
-                                   valid_features);
     // distance_kernel<<<grid, block>>>(thrust::raw_pointer_cast(d_X_train.data()),
-    //                                 thrust::raw_pointer_cast(d_weights.data()),
-    //                                 thrust::raw_pointer_cast(d_distances.data()),
-    //                                 num_samples, num_features);
+    //                                thrust::raw_pointer_cast(d_weights.data()),
+    //                                thrust::raw_pointer_cast(d_distances.data()),
+    //                                num_samples, num_features,
+    //                                thrust::raw_pointer_cast(d_valid_indices.data()),
+    //                                valid_features);
+    distance_kernel<<<grid, block>>>(thrust::raw_pointer_cast(d_X_filtered.data()),
+                                    thrust::raw_pointer_cast(d_weights_filtered.data()),
+                                    thrust::raw_pointer_cast(d_distances.data()),
+                                    num_samples, valid_features);
 
-    // 3. Encontrar vecinos más cercanos
+    // 4. Encontrar vecinos más cercanos
     thrust::device_vector<int> d_predictions(num_samples);
     gridSize = (num_samples + blockSize - 1) / blockSize;
     nearest_neighbor_kernel<<<gridSize, blockSize>>>(thrust::raw_pointer_cast(d_distances.data()),
                                                    thrust::raw_pointer_cast(d_predictions.data()),
                                                    num_samples);
 
-    // 4. Calcular precisión
+    // 5. Calcular precisión
     thrust::device_vector<int> d_correct(1, 0);
-    smSize = blockSize * 2 * sizeof(int);
+    smSize = blockSize * sizeof(int);
     accuracy_kernel<<<gridSize, blockSize, smSize>>>(thrust::raw_pointer_cast(d_predictions.data()),
                                                     thrust::raw_pointer_cast(d_y_train.data()),
                                                     thrust::raw_pointer_cast(d_correct.data()),

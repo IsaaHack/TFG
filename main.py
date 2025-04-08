@@ -184,7 +184,7 @@ weights = ga.fit()
 end = time.time()
 print("Time:", end - start)
 
-fit = problem.fitness_gpu(weights)
+fit = problem.fitness(weights)
 class_rate = problem.clas_rate(weights)
 red_rate = problem.red_rate(weights)
 
@@ -201,7 +201,7 @@ start = time.time()
 path = ga.fit()
 end = time.time()
 print("Time:", end - start)
-fit = problem2.fitness_gpu(path)
+fit = problem2.fitness(path)
 print("Fitness from GA:", -fit)
 
 #Verify path

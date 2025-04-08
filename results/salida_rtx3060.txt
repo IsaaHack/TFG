@@ -2,67 +2,67 @@ X_train shape: (1797, 64)
 y_train shape: (1797,)
 ----------------Fitness de clasificación-------------------
 Fitness CPU: 76.62249755859375
-Time (CPU): 3.575826s ± 0.021034s
+Time (CPU): 3.542035s ± 0.113811s
 -----------------------------------------------------------
 Fitness OpenMP: 76.62249755859375
-Time (OpenMP): 0.833625s ± 0.010027s
+Time (OpenMP): 0.951421s ± 0.036068s
 -----------------------------------------------------------
 Fitness GPU: 76.62249755859375
-Time (GPU): 0.128320s ± 0.018629s
+Time (GPU): 0.082605s ± 0.009410s
 -----------------------------------------------------------
-Speedup CPU vs OpenMP: 4.29x
-Speedup CPU vs GPU: 27.87x
-Speedup OpenMP vs GPU: 6.50x
+Speedup CPU vs OpenMP: 3.72x
+Speedup CPU vs GPU: 42.88x
+Speedup OpenMP vs GPU: 11.52x
 -----------------------------------------------------------
 -----------------------Fitness de TSP------------------------
 Number of cities: 100
 Distance matrix shape: (100, 100)
 ---------------------------------------------------------
 Fitness CPU: -5527.8564453125
-Time (CPU): 0.000887s ± 0.000020s
+Time (CPU): 0.000938s ± 0.000018s
 ---------------------------------------------------------
 Fitness OpenMP: -5520.623046875
-Time (OpenMP): 0.004539s ± 0.000187s
+Time (OpenMP): 0.004649s ± 0.000549s
 ---------------------------------------------------------
 Fitness GPU: -5527.8564
-Time (GPU): 0.000186s ± 0.000035s
+Time (GPU): 0.000197s ± 0.000050s
 ---------------------------------------------------------
 Speedup CPU vs OpenMP: 0.20x
-Speedup CPU vs GPU: 4.77x
-Speedup OpenMP vs GPU: 24.39x
+Speedup CPU vs GPU: 4.75x
+Speedup OpenMP vs GPU: 23.57x
 ---------------------------------------------------------
 ..........................ALGORITMS..........................
 ---------------------------GA-------------------------------
 X_train shape: (1797, 64)
 y_train shape: (1797,)
 Starting GA Clas...
-Generation 30/300 - Best fitness: 82.7473
-Generation 60/300 - Best fitness: 85.2312
-Generation 90/300 - Best fitness: 86.7937
-Generation 120/300 - Best fitness: 88.3980
-Generation 150/300 - Best fitness: 88.8303
-Generation 180/300 - Best fitness: 89.2627
-Generation 210/300 - Best fitness: 90.0440
-Generation 240/300 - Best fitness: 90.6165
-Generation 270/300 - Best fitness: 90.7417
-Generation 300/300 - Best fitness: 90.7417
-Time: 20.683907985687256
-Classification rate: 97.55147552490234
-Reduction rate: 70.3125
-Fitness from GA: 90.74172973632812
+Generation 30/300 - Best fitness: 81.6021
+Generation 60/300 - Best fitness: 83.7790
+Generation 90/300 - Best fitness: 85.6636
+Generation 120/300 - Best fitness: 86.5016
+Generation 150/300 - Best fitness: 87.3663
+Generation 180/300 - Best fitness: 88.7469
+Generation 210/300 - Best fitness: 89.6683
+Generation 240/300 - Best fitness: 90.6048
+Generation 270/300 - Best fitness: 90.6883
+Generation 300/300 - Best fitness: 90.7300
+Time: 12.930766105651855
+Classification rate: 96.49415588378906
+Reduction rate: 73.4375
+Fitness from GA: 90.72999572753906
 -----------------------------------------------------------
 Starting GA TSP...
-Generation 10/100 - Best fitness: -3988.8069
-Generation 20/100 - Best fitness: -3706.7195
-Generation 30/100 - Best fitness: -3420.0137
-Generation 40/100 - Best fitness: -2998.4243
-Generation 50/100 - Best fitness: -2890.3071
-Generation 60/100 - Best fitness: -2678.2844
-Generation 70/100 - Best fitness: -2617.3669
-Generation 80/100 - Best fitness: -2513.5278
-Generation 90/100 - Best fitness: -2398.6523
-Generation 100/100 - Best fitness: -2330.4792
-Time: 19.38626480102539
-Fitness from GA: 2330.4792
+Generation 10/100 - Best fitness: -3833.5605
+Generation 20/100 - Best fitness: -3523.3882
+Generation 30/100 - Best fitness: -3401.9370
+Generation 40/100 - Best fitness: -3111.6685
+Generation 50/100 - Best fitness: -2987.2654
+Generation 60/100 - Best fitness: -2811.5649
+Generation 70/100 - Best fitness: -2748.1418
+Generation 80/100 - Best fitness: -2640.5229
+Generation 90/100 - Best fitness: -2593.1880
+Generation 100/100 - Best fitness: -2573.3708
+Time: 1.0241718292236328
+Fitness from GA: 2573.370849609375
 Verifying path...
 Path is valid

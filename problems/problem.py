@@ -8,3 +8,20 @@ class Problem(ABC):
     @abstractmethod
     def fitness(self, solution):
         pass
+
+    def fitness_omp(self, solution):
+        raise NotImplementedError("OpenMP fitness not implemented")
+
+    def fitness_gpu(self, solution):
+        raise NotImplementedError("GPU fitness not implemented")
+
+def patch_problem(problem):
+    #Comprobar si el argumento forma parte de la clase Problem o de la clase hija
+    if not isinstance(problem, Problem):
+        raise TypeError("The argument must be an instance of the Problem class or its subclasses.")
+    def add_method(func):
+        if not callable(func):
+            raise TypeError("The argument must be a callable function.")
+        setattr(problem, func.__name__, func)
+        return func
+        
