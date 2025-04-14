@@ -13,7 +13,7 @@ class TSPProblem(problem.Problem):
 
     def generate_solution(self, num_samples=1):
         if num_samples == 1:
-            return np.arange(self.n_cities).astype(np.int32)
+            return np.random.permutation(self.n_cities).astype(np.int32)
         else:
             base_perm = np.tile(np.arange(self.n_cities), (num_samples, 1)).astype(np.int32)
             np.apply_along_axis(np.random.shuffle, 1, base_perm)
