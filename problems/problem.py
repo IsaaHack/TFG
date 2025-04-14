@@ -6,14 +6,17 @@ class Problem(ABC):
         pass
 
     @abstractmethod
-    def fitness(self, solution):
+    def fitness(self, solutions):
         pass
 
-    def fitness_omp(self, solution):
+    def fitness_omp(self, solutions):
         raise NotImplementedError("OpenMP fitness not implemented")
 
-    def fitness_gpu(self, solution):
+    def fitness_gpu(self, solutions):
         raise NotImplementedError("GPU fitness not implemented")
+    
+    def fitness_hybrid(self, solutions, speedup=1):
+        raise NotImplementedError("Hybrid fitness not implemented")
 
 def patch_problem(problem):
     #Comprobar si el argumento forma parte de la clase Problem o de la clase hija

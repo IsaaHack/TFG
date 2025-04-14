@@ -2,8 +2,10 @@ from algoritms.algoritm import Algoritm
 import numpy as np
 
 class GA(Algoritm):
-    def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, generations=100, seed=None, tournament_size=3):
-        self.problem = problem
+    def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, generations=100, seed=None, tournament_size=3, executer_type='hybrid', executer=None):
+        required_methods = ['fitness', 'generate_solution', 'mutation', 'crossover']
+        super().__init__(problem, required_methods, executer_type, executer)
+
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
@@ -11,16 +13,8 @@ class GA(Algoritm):
         self.seed = seed
         self.tournament_size = tournament_size
 
-        self.required_methods = ['fitness', 'generate_solution', 'mutation', 'crossover']
-        self.check_required_methods()
-
     def initialize_population(self):
         return self.problem.generate_solution(self.population_size)
-    
-    def check_required_methods(self):
-        for method in self.required_methods:
-            if not hasattr(self.problem, method):
-                raise ValueError(f"Problem class must implement the {method} method.")
             
     def selection(self, population, fitnesess):
         new_population = np.empty_like(population)
@@ -37,7 +31,7 @@ class GA(Algoritm):
         
         fitness_values = np.empty(self.population_size)
         fitness_values[0] = best_fit
-        fitness_values[1:] = self.problem.fitness_gpu(new_population[1:])
+        fitness_values[1:] = self.executer.execute(new_population[1:])
 
         return new_population, fitness_values
         
@@ -47,8 +41,8 @@ class GA(Algoritm):
             np.random.seed(self.seed)
 
         population = self.initialize_population()
-        fitness_values = self.problem.fitness_gpu(population)
-        actual_generation = 0
+        fitness_values = self.executer.execute(population)
+        actual_generation = 1
         best = np.copy(population[np.argmax(fitness_values)])
         best_fit = fitness_values[np.argmax(fitness_values)]
         no_improvement = 0
@@ -63,7 +57,7 @@ class GA(Algoritm):
             self.problem.mutation(new_population, self.mutation_rate)
 
             # Evaluate fitness
-            fitness_values = self.problem.fitness_gpu(new_population)
+            fitness_values = self.executer.execute(new_population)
 
             # Replace the worst individuals with the best from the previous generation(Elitism)
             best_new_index = np.argmax(fitness_values)

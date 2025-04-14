@@ -12,19 +12,63 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <cmath>
+#include <omp.h>
+#include "./utils.cpp"
+#include <chrono>
 
+using namespace std::chrono;
 namespace py = pybind11;
 using namespace std;
 
-const float THRESHOLD = 0.1;
-const float CLASS_WEIGHT = 0.75;
-const float RED_WEIGHT = 0.25;
+// Función para crear cápsula desde un puntero entero (dirección de memoria)
+py::capsule create_capsule(size_t ptr_address) {
+    void* ptr = reinterpret_cast<void*>(ptr_address);
+    return py::capsule(ptr, [](void*){ /* No liberar, manejado por CuPy */ });
+}
+
+void s_solutions_hybrid(int &n_sol_cpu, int &n_sol_gpu, const int n_sol, const float speedup_factor) {
+    // Calcular la distribución de soluciones entre CPU y GPU
+    n_sol_gpu = round(n_sol * speedup_factor / (1 + speedup_factor));
+    n_sol_cpu = n_sol - n_sol_gpu;
+    
+
+    if (n_sol_gpu <= 0) {
+        n_sol_gpu = 1;
+        n_sol_cpu = n_sol - 1;
+    } else if (n_sol_cpu <= 0) {
+        n_sol_cpu = 1;
+        n_sol_gpu = n_sol - 1;
+    }
+    
+}
 
 __global__ void warmup_kernel() {
     // Kernel vacío para calentar la GPU
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     if (tid == 0) {
         tid = 0; // No hacer nada, solo calentar
+    }
+}
+
+__global__ void tsp_fitness_kernel_multiple(
+    cudaTextureObject_t tex_distances,
+    const int* solutions,
+    float* fitness,
+    int n,
+    int num_solutions
+) {
+    // Índice global del hilo
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (tid < num_solutions) {
+        float sum = 0.0f;
+
+        for (int city_idx = 0; city_idx < n; ++city_idx) {
+            const int current_city = solutions[city_idx * num_solutions + tid];
+            const int next_city = solutions[((city_idx + 1) % n) * num_solutions + tid];
+            sum += tex2D<float>(tex_distances, current_city, next_city);
+        }
+        fitness[tid] = -sum;
     }
 }
 
@@ -73,6 +117,117 @@ void fitness_tsp_cuda(py::capsule distances_capsule, py::capsule solution_capsul
     int gridSize = (num_solutions + blockSize - 1) / blockSize;
     tsp_fitness_kernel_multiple<<<gridSize, blockSize>>>(d_distances, d_solution, d_fitness, n, num_solutions);
 }
+
+void fitness_tsp_cuda_2(
+    float* distances,
+    int* solution,
+    float* fitness,
+    int n,
+    int num_solutions
+) {
+
+    // Lanzar kernel
+    int blockSize = 256;
+    int gridSize = (num_solutions + blockSize - 1) / blockSize;
+    tsp_fitness_kernel_multiple<<<gridSize, blockSize>>>(distances, solution, fitness, n, num_solutions);
+}
+
+float fitness_tsp_hybrid(
+    py::array_t<float> distances_np,
+    py::capsule distances_capsule,
+    py::array_t<int> solution_np,
+    py::array_t<float> fitness_np,
+    int n,
+    int num_solutions,
+    float speedup_factor
+) {
+    // --- Obtener información de arrays ---
+    auto distances_info = distances_np.request();
+    auto solution_info = solution_np.request();
+    auto fitness_info = fitness_np.request();
+
+    auto distances_ptr = static_cast<float *>(distances_info.ptr);
+    auto solution_ptr = static_cast<int *>(solution_info.ptr);
+    auto fitness_ptr = static_cast<float *>(fitness_info.ptr);
+    float* d_distances = static_cast<float*>(distances_capsule.get_pointer());
+
+    // --- Calcular distribución CPU/GPU ---
+    // int num_solutions_cpu = round(num_solutions / speedup_factor);
+    // int num_solutions_gpu = num_solutions - num_solutions_cpu;
+
+    // if (num_solutions_gpu <= 0) {
+    //     num_solutions_gpu = 1;
+    //     num_solutions_cpu = num_solutions - 1;
+    // } else if (num_solutions_cpu <= 0) {
+    //     num_solutions_cpu = 1;
+    //     num_solutions_gpu = num_solutions - 1;
+    // }
+    int num_solutions_cpu = 0;
+    int num_solutions_gpu = 0;
+    s_solutions_hybrid(num_solutions_cpu, num_solutions_gpu, num_solutions, speedup_factor);
+
+    // --- Preparar memoria en GPU ---
+    int* solutions_gpu_ptr = nullptr;
+    cudaMalloc((void**)&solutions_gpu_ptr, num_solutions_gpu * n * sizeof(int));
+    cudaMemcpy(solutions_gpu_ptr, solution_ptr, num_solutions_gpu * n * sizeof(int), cudaMemcpyHostToDevice);
+
+    float time_gpu, time_cpu;
+
+    // --- Ejecución paralela CPU y GPU ---
+    #pragma omp parallel sections num_threads(2) shared(d_distances, solution_ptr, fitness_ptr, solutions_gpu_ptr, n, num_solutions_gpu, num_solutions_cpu)
+    {
+        // --- Sección GPU ---
+        #pragma omp section 
+        {
+            auto start = high_resolution_clock::now();
+
+            auto fitness_gpu = thrust::device_vector<float>(num_solutions_gpu);
+
+            fitness_tsp_cuda_2(
+                d_distances,
+                solutions_gpu_ptr,
+                thrust::raw_pointer_cast(fitness_gpu.data()),
+                n,
+                num_solutions_gpu
+            );
+
+            cudaMemcpy(fitness_ptr, fitness_gpu.data().get(), num_solutions_gpu * sizeof(float), cudaMemcpyDeviceToHost);
+
+            auto end = high_resolution_clock::now();
+            duration<double> elapsed = end - start;
+            time_gpu = elapsed.count() / num_solutions_gpu;
+        }
+
+        // --- Sección CPU ---
+        #pragma omp section
+        {
+            int max_threads = omp_get_max_threads() / 2;
+            omp_set_num_threads(std::max(1, max_threads - 1));
+
+            auto start = high_resolution_clock::now();
+
+            fitness_tsp_omp_cpp(
+                distances_ptr,
+                &solution_ptr[num_solutions_gpu * n],
+                &fitness_ptr[num_solutions_gpu],
+                num_solutions_cpu,
+                n
+            );
+
+            auto end = high_resolution_clock::now();
+            duration<double> elapsed = end - start;
+            time_cpu = elapsed.count() / num_solutions_cpu;
+
+            omp_set_num_threads(max_threads);
+        }
+    }
+
+    // --- Liberar memoria de la GPU ---
+    cudaFree(solutions_gpu_ptr);
+
+    return time_cpu / time_gpu;
+}
+
 
 // Kernel para filtrar pesos y características
 __global__ void filter_kernel(const float* weights, int* valid_indices, int* valid_count, int total_features) {
@@ -324,19 +479,148 @@ float fitness_cuda(
     return CLASS_WEIGHT * clas + RED_WEIGHT * red;
 }
 
-// Función para crear cápsula desde un puntero entero (dirección de memoria)
-py::capsule create_capsule(size_t ptr_address) {
-    void* ptr = reinterpret_cast<void*>(ptr_address);
-    return py::capsule(ptr, [](void*){ /* No liberar, manejado por CuPy */ });
+float fitness_hybrid(
+    py::array_t<float> weights_np,
+    py::array_t<float> X_train_np, 
+    py::array_t<int> y_train_np,
+    py::capsule X_train_capsule,
+    py::capsule y_train_capsule,
+    py::array_t<float> fitness_values_np,
+    int num_samples,
+    int num_features,
+    float speedup_factor
+) {
+    // --- Obtener información de arrays ---
+    auto weights_info = weights_np.request();
+    auto X_train_info = X_train_np.request();
+    auto y_train_info = y_train_np.request();
+    auto fitness_values_info = fitness_values_np.request();
+
+    if (X_train_info.ndim != 2 || y_train_info.ndim != 1 || fitness_values_info.ndim != 1)
+        throw std::runtime_error("Formato de entrada inválido");
+
+    auto weights_ptr = static_cast<float *>(weights_info.ptr);
+    auto X_train_ptr = static_cast<float *>(X_train_info.ptr);
+    auto y_train_ptr = static_cast<int *>(y_train_info.ptr);
+    auto fitness_values = static_cast<float *>(fitness_values_info.ptr);
+
+    size_t w_size = X_train_info.shape[1];
+    size_t n = X_train_info.shape[0];
+    size_t d = X_train_info.shape[1];
+    size_t n_sol = weights_info.shape[0];
+
+    // --- Obtener punteros de CuPy y crear vectores de dispositivo ---
+    thrust::device_ptr<float> d_X_train_prt(static_cast<float*>(X_train_capsule.get_pointer()));
+    thrust::device_ptr<int> d_y_train_prt(static_cast<int*>(y_train_capsule.get_pointer()));
+
+    thrust::device_vector<float> d_X_train(d_X_train_prt, d_X_train_prt + num_samples * num_features);
+    thrust::device_vector<int> d_y_train(d_y_train_prt, d_y_train_prt + num_samples);
+
+    // --- Dividir trabajo entre CPU y GPU ---
+    // int num_weights_cpu = round(n_sol / speedup_factor);
+    // int num_weights_gpu = n_sol - num_weights_cpu;
+
+    // if (num_weights_gpu <= 0) {
+    //     num_weights_gpu = 1;
+    //     num_weights_cpu = n_sol - 1;
+    // } else if (num_weights_cpu <= 0) {
+    //     num_weights_cpu = 1;
+    //     num_weights_gpu = n_sol - 1;
+    // }
+    int num_weights_cpu = 0;
+    int num_weights_gpu = 0;
+    s_solutions_hybrid(num_weights_cpu, num_weights_gpu, n_sol, speedup_factor);
+
+    // --- Reservar y copiar pesos a la GPU ---
+    float* weights_gpu_ptr = nullptr;
+    cudaMalloc((void**)&weights_gpu_ptr, num_weights_gpu * num_features * sizeof(float));
+    cudaMemcpy(weights_gpu_ptr, weights_ptr, num_weights_gpu * num_features * sizeof(float), cudaMemcpyHostToDevice);
+
+    cudaDeviceSynchronize();
+
+    float* weights_cpu = weights_ptr + num_weights_gpu * num_features;
+
+    float time_gpu, time_cpu;
+
+    // --- Secciones paralelas: GPU y CPU ---
+    #pragma omp parallel sections num_threads(2) shared(weights_gpu_ptr, weights_cpu, X_train_ptr, y_train_ptr, fitness_values)
+    {
+        // --- Sección GPU ---
+        #pragma omp section
+        {
+            auto start = high_resolution_clock::now();
+
+            for (int i = 0; i < num_weights_gpu; ++i) {
+                float clas = 0.0f;
+                float red = 0.0f;
+
+                thrust::device_vector<float> temp_weight_vector(
+                    weights_gpu_ptr + i * num_features,
+                    weights_gpu_ptr + (i + 1) * num_features
+                );
+
+                clas = clas_rate_cuda(temp_weight_vector, d_X_train, d_y_train, n, d);
+                red = red_rate_cuda(temp_weight_vector);
+
+                cudaDeviceSynchronize();
+
+                fitness_values[i] = CLASS_WEIGHT * clas + RED_WEIGHT * red;
+            }
+
+            auto end = high_resolution_clock::now();
+            duration<double> elapsed = end - start;
+            time_gpu = elapsed.count() / num_weights_gpu;
+        }
+
+        // --- Sección CPU ---
+        #pragma omp section
+        {
+            int max_threads = omp_get_max_threads() / 2;
+            omp_set_num_threads(std::max(1, max_threads - 1));
+
+            auto start = high_resolution_clock::now();
+
+            fitness_omp_cpp(
+                weights_cpu,
+                X_train_ptr,
+                y_train_ptr,
+                &fitness_values[num_weights_gpu],
+                num_weights_cpu,
+                n,
+                d,
+                w_size
+            );
+
+            auto end = high_resolution_clock::now();
+            duration<double> elapsed = end - start;
+            time_cpu = elapsed.count() / num_weights_cpu;
+
+            omp_set_num_threads(max_threads);
+        }
+    }
+
+    // --- Liberar memoria de la GPU ---
+    cudaFree(weights_gpu_ptr);
+
+    return time_cpu / time_gpu;
 }
 
 PYBIND11_MODULE(utils_gpu, m) {
     m.def("fitness_tsp_cuda", &fitness_tsp_cuda, "Calcular fitness del TSP usando CUDA",
             py::arg("distances"), py::arg("solution"), py::arg("fitness"),
             py::arg("n"), py::arg("num_solutions"));
+    m.def("fitness_tsp_hybrid", &fitness_tsp_hybrid, "Calcular fitness híbrido del TSP usando CUDA y CPU",
+            py::arg("distances"), py::arg("distances_capsule"),
+            py::arg("solution"), py::arg("fitness"),
+            py::arg("n"), py::arg("num_solutions"), py::arg("speedup_factor"));
     m.def("fitness_cuda", &fitness_cuda, "Calcular fitness usando CUDA",
           py::arg("weights"), py::arg("X_train"), py::arg("y_train"),
           py::arg("num_samples"), py::arg("num_features"));
+    m.def("fitness_hybrid", &fitness_hybrid, "Calcular fitness híbrido usando CUDA y CPU",
+            py::arg("weights"), py::arg("X_train"), py::arg("y_train"),
+            py::arg("X_train_capsule"), py::arg("y_train_capsule"),
+            py::arg("fitness_values"), py::arg("num_samples"),
+            py::arg("num_features"), py::arg("speedup_factor"));
     m.def("warmup", &warmup_kernel, "Calentar la GPU");
     m.def("create_capsule", &create_capsule, "Crear cápsula CUDA",
           py::arg("ptr_address"));

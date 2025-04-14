@@ -4,6 +4,7 @@ import time
 from sklearn.datasets import load_digits
 import timeit
 import utils_gpu
+from time import sleep
 
 np.random.seed(42)  # Para reproducibilidad
 
@@ -67,8 +68,6 @@ print(f"Speedup CPU vs OpenMP: {cpu_speedup:.2f}x")
 print(f"Speedup CPU vs GPU: {gpu_speedup:.2f}x")
 print(f"Speedup OpenMP vs GPU: {np.mean(omp_times) / np.mean(gpu_times):.2f}x")
 print("-----------------------------------------------------------")
-
-
 
 print("-----------------------Fitness de TSP------------------------")
 from problems.tsp_problem import TSPProblem
@@ -176,7 +175,7 @@ from algoritms.ga import GA
 
 problem = ClasProblem(X_train, y_train)
 problem2 = TSPProblem(dist_matrix)
-ga = GA(problem, population_size=50, generations=300, seed=42)
+ga = GA(problem, population_size=50, generations=300, seed=42, executer_type='gpu')
 
 print("Starting GA Clas...")
 start = time.time()
@@ -194,7 +193,7 @@ print("Fitness from GA:", fit)
 
 print("-----------------------------------------------------------")
 
-ga = GA(problem2, population_size=1024, generations=100, seed=42, mutation_rate=0.2, crossover_rate=0.7)
+ga = GA(problem2, population_size=1024, generations=100, seed=42, mutation_rate=0.2, crossover_rate=0.7, executer_type='gpu')
 print("Starting GA TSP...")
 
 start = time.time()

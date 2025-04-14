@@ -1,5 +1,5 @@
 import problems.problem as problem
-import utils, utils_omp, utils_gpu
+import utils, utils_gpu
 import cupy as cp
 import numpy as np
 
@@ -31,9 +31,13 @@ class ClasProblem(problem.Problem):
     
     def fitness_omp(self, solutions):
         if len(solutions.shape) == 1:
-            return utils_omp.fitness_omp(solutions, self.X, self.Y)
+            fitness_values = np.empty(1, dtype=np.float32)
         else:
-            return np.array([utils_omp.fitness_omp(solution, self.X, self.Y) for solution in solutions])
+            fitness_values = np.empty(solutions.shape[0], dtype=np.float32)
+
+        utils.fitness_omp(solutions, self.X, self.Y, fitness_values)
+
+        return fitness_values[0] if len(solutions.shape) == 1 else fitness_values
     
     def fitness_gpu(self, solutions):
         solutions_gpu = cp.asarray(solutions, dtype=cp.float32, order='C')
@@ -59,6 +63,27 @@ class ClasProblem(problem.Problem):
                     self.n_samples,
                     self.n_features
             ) for i in range(solutions.shape[0])])
+        
+    def fitness_hybrid(self, solutions, speedup=1):
+        if len(solutions.shape) == 1:
+            fitness_values = np.empty(1, dtype=np.float32)
+        else:
+            fitness_values = np.empty(solutions.shape[0], dtype=np.float32)
+
+        # Llamar a la función de GPU
+        new_speedup = utils_gpu.fitness_hybrid(
+                solutions,
+                self.X,
+                self.Y,
+                utils_gpu.create_capsule(self.X_gpu.data.ptr),
+                utils_gpu.create_capsule(self.Y_gpu.data.ptr),
+                fitness_values,
+                self.n_samples,
+                self.n_features,
+                speedup
+        )
+
+        return fitness_values[0] if len(solutions.shape) == 1 else fitness_values, new_speedup
     
     def clas_rate(self, solution):
         return utils.clas_rate(solution, self.X, self.Y)
@@ -95,7 +120,17 @@ class ClasProblem(problem.Problem):
         # Asegura que todos los valores estén en el rango [0,1]
         population[:2 * n_pairs] = np.clip(population[:2 * n_pairs], 0, 1)
 
+    def crossover2(self, population, crossover_rate, alpha: float = 0.3):
+        # Calcular número de pares
+        n_pairs = int(np.floor(crossover_rate * len(population) / 2))
+        idx_even = np.arange(0, 2 * n_pairs, 2, dtype=np.int32)
+        idx_odd = np.arange(1, 2 * n_pairs, 2, dtype=np.int32)
 
+        # Generar valores aleatorios uniformes para cada descendiente
+        rand_uniform1 = np.random.rand(n_pairs, population.shape[1]).astype(np.float32)
+        rand_uniform2 = np.random.rand(n_pairs, population.shape[1]).astype(np.float32)
+
+        return utils.crossover_blx(population, idx_even, idx_odd, rand_uniform1, rand_uniform2, alpha=alpha)
 
     def mutation(self, population, mutation_rate):
         estimated_mutations = int(mutation_rate * population.shape[0])

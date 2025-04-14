@@ -1,5 +1,5 @@
 import problems.problem as problem
-import utils, utils_omp, utils_gpu
+import utils, utils_gpu
 import cupy as cp
 import numpy as np
 
@@ -27,9 +27,13 @@ class TSPProblem(problem.Problem):
     
     def fitness_omp(self, solutions):
         if len(solutions.shape) == 1:
-            return utils_omp.fitness_tsp_omp(self.distances, solutions)
+            fitness_value = np.empty(1, dtype=np.float32)
         else:
-            return np.array([self.fitness_omp(solution) for solution in solutions])
+            fitness_value = np.empty(solutions.shape[0], dtype=np.float32)
+        
+        utils.fitness_tsp_omp(self.distances, solutions, fitness_value)
+
+        return fitness_value[0] if len(solutions.shape) == 1 else fitness_value
     
     def fitness_gpu(self, solutions):
         unique = False
@@ -39,9 +43,8 @@ class TSPProblem(problem.Problem):
 
         solutions_gpu = cp.asarray(solutions, dtype=cp.int32, order='C')
         fitness_gpu = cp.empty(solutions.shape[0], dtype=cp.float32, order='C')
-
-        distances_capsule = utils_gpu.create_capsule(self.distances_gpu.data.ptr)
         solutions_capsule = utils_gpu.create_capsule(solutions_gpu.data.ptr)
+        distances_capsule = utils_gpu.create_capsule(self.distances_gpu.data.ptr)
         fitness_capsule = utils_gpu.create_capsule(fitness_gpu.data.ptr)
 
         cp.cuda.Device().synchronize()
@@ -58,8 +61,37 @@ class TSPProblem(problem.Problem):
             return cp.asnumpy(fitness_gpu)[0]
         else:
             return cp.asnumpy(fitness_gpu)
+        
+    def fitness_hybrid(self, solutions, speedup=1):
+        if len(solutions.shape) == 1:
+            fitness_values = np.empty(1, dtype=np.float32)
+        else:
+            fitness_values = np.empty(solutions.shape[0], dtype=np.float32)
+
+        new_speedup = utils_gpu.fitness_tsp_hybrid(
+                self. distances,
+                utils_gpu.create_capsule(self.distances_gpu.data.ptr),
+                solutions,
+                fitness_values,
+                self.n_cities,
+                fitness_values.shape[0],
+                speedup
+        )
+
+        return fitness_values[0] if len(solutions.shape) == 1 else fitness_values, new_speedup
     
     def crossover(self, population, crossover_rate):
+        num_crossovers = int(np.floor(crossover_rate * len(population) / 2))
+
+        random_starts = np.empty(num_crossovers, dtype=np.int32)
+        random_ends = np.empty(num_crossovers, dtype=np.int32)
+        for k in range(num_crossovers):
+            # Seleccionar dos índices aleatorios sin reemplazo y ordenarlos (ya se requiere que estén sorted)
+            random_starts[k], random_ends[k] = np.sort(np.random.choice(self.n_cities, size=2, replace=False))
+
+        return utils.crossover_tsp(population, random_starts, random_ends)
+    
+    def crossover2(self, population, crossover_rate):
         num_crossovers = int(np.floor(crossover_rate * len(population) / 2))
         n_cities = self.n_cities
         in_segment = np.zeros(n_cities, dtype=bool)  # Preallocate boolean array for reuse
@@ -99,7 +131,24 @@ class TSPProblem(problem.Problem):
             population[parent2] = child2
 
         return population
+    
+    def mutation2(self, population, mutation_rate):
+        n_individuals = population.shape[0]
+        estimated_mutations = int(mutation_rate * n_individuals)
+        if estimated_mutations == 0:
+            return
+        
+        # Seleccionar aleatoriamente los índices de individuos a mutar sin repetición
+        individual_indices = np.random.choice(n_individuals, size=estimated_mutations, replace=False)
 
+        # Generar índices para swap mutation:
+        # Primer índice aleatorio
+        indices1 = np.random.randint(0, self.n_cities, size=estimated_mutations)
+        # Segundo índice: primero se genera un entero en [0, n_cities-1) y luego se ajusta:
+        indices2 = np.random.randint(0, self.n_cities - 1, size=estimated_mutations)
+        indices2 = np.where(indices2 >= indices1, indices2 + 1, indices2)
+
+        return utils.mutation_tsp(population, individual_indices, indices1, indices2)
 
     def mutation(self, population, mutation_rate):
         n_individuals = population.shape[0]
