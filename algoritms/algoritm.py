@@ -16,7 +16,7 @@ class Algoritm(ABC):
                 self.executer = HybridExecuter(problem)
                 self.executer.benchmark(problem.generate_solution(5))
             else:
-                raise ValueError(f"Unknown executer type: {executer_type}")
+                raise ValueError(f"Unknown executer type: {executer_type} available: single, multi, gpu, hybrid")
         else:
             if not isinstance(executer, (SingleCoreExecuter, MultiCoreExecuter, GpuExecuter, HybridExecuter)):
                 raise ValueError("Invalid executer type provided.")

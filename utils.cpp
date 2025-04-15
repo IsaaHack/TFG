@@ -17,22 +17,21 @@ const float THRESHOLD = 0.1f;
 
 float clas_rate_cpp(const float* weights, size_t w_size, const float* X_train, size_t n, size_t d, const int* y_train) {
     vector<float> weights_to_use;
-    vector<vector<float>> attributes_to_use;
+    
+    vector<int> valid_indices;
 
     for (size_t j = 0; j < w_size; ++j) {
         if (weights[j] >= THRESHOLD) {
             weights_to_use.push_back(weights[j]);
+            valid_indices.push_back(j);
         }
     }
 
+    vector<vector<float>> attributes_to_use(n, vector<float>(valid_indices.size()));
     for (size_t i = 0; i < n; ++i) {
-        vector<float> row;
-        for (size_t j = 0; j < w_size; ++j) {
-            if (weights[j] >= THRESHOLD) {
-                row.push_back(X_train[i * d + j]);
-            }
+        for (size_t j = 0; j < valid_indices.size(); ++j) {
+            attributes_to_use[i][j] = X_train[i * d + valid_indices[j]];
         }
-        attributes_to_use.push_back(row);
     }
 
     vector<vector<float>> distances(n, vector<float>(n));

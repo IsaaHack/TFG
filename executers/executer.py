@@ -23,8 +23,7 @@ class LocalExecuter(Executer):
 
 class SingleCoreExecuter(LocalExecuter):
     def execute(self, population):
-        self.problem.fitness(population)
-        pass
+        return self.problem.fitness(population)
 
 class MultiCoreExecuter(LocalExecuter):
     def execute(self, population):
@@ -59,7 +58,7 @@ class HybridExecuter(LocalExecuter):
         #self.s_gpu_omp = (self.s_gpu_omp + new_speedup) / 2
         return fitness_values
     
-class ClusterExecuter:  # Supone heredar de alguna clase base 'Executer'
+class ClusterExecuter(Executer):
     def __init__(self, filename: str, nodes: list,
                  problem_import: str, problem_args,
                  algorithm_import: str, algorithm_args):

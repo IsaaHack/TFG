@@ -177,7 +177,7 @@ float fitness_tsp_hybrid(
     #pragma omp parallel sections num_threads(2) shared(d_distances, solution_ptr, fitness_ptr, solutions_gpu_ptr, n, num_solutions_gpu, num_solutions_cpu)
     {
         // --- Sección GPU ---
-        #pragma omp section 
+        #pragma omp section
         {
             auto start = high_resolution_clock::now();
 

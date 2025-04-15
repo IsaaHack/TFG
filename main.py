@@ -193,7 +193,7 @@ print("Fitness from GA:", fit)
 
 print("-----------------------------------------------------------")
 
-ga = GA(problem2, population_size=1024, generations=100, seed=42, mutation_rate=0.2, crossover_rate=0.7, executer_type='gpu')
+ga = GA(problem2, population_size=1024, generations=100, seed=42, mutation_rate=0.2, executer_type='gpu')
 print("Starting GA TSP...")
 
 start = time.time()
