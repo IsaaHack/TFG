@@ -70,7 +70,7 @@ print("y_train shape:", y_train.shape)
 
 problem = ClasProblem(X_train, y_train)
 problem2 = TSPProblem(dist_matrix)
-ga = GA(problem, population_size=50, generations=300, seed=42, executer_type='hybrid')
+ga = GA(problem, population_size=50, generations=300, seed=42, executer_type='gpu')
 
 print("Starting GA Clas...")
 start = time.time()

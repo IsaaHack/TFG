@@ -7,7 +7,7 @@ import subprocess
 import numpy as np
 import importlib
 
-NUM_SAMPLES = 10
+NUM_SAMPLES = 5
 
 class Executer(ABC):
     def __init__(self):
