@@ -60,9 +60,9 @@ class HybridExecuter(LocalExecuter):
         return fitness_values
     
 class ClusterExecuter:  # Supone heredar de alguna clase base 'Executer'
-    def __init__(self, filename: str, nodes: list[str],
-                 problem_import: str, problem_args: dict | list[str],
-                 algorithm_import: str, algorithm_args: dict | list[str]):
+    def __init__(self, filename: str, nodes: list,
+                 problem_import: str, problem_args,
+                 algorithm_import: str, algorithm_args):
         self.filename = filename
         self.nodes = nodes
         self.problem_import = problem_import
