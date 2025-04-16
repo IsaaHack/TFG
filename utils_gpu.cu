@@ -30,14 +30,13 @@ void s_solutions_hybrid(int &n_sol_cpu, int &n_sol_gpu, const int n_sol, const f
     // Calcular la distribución de soluciones entre CPU y GPU
     n_sol_gpu = round(n_sol * speedup_factor / (1 + speedup_factor));
     n_sol_cpu = n_sol - n_sol_gpu;
-    
 
     if (n_sol_gpu <= 0) {
-        n_sol_gpu = 1;
-        n_sol_cpu = n_sol - 1;
+        n_sol_gpu = 0;
+        n_sol_cpu = n_sol;
     } else if (n_sol_cpu <= 0) {
-        n_sol_cpu = 1;
-        n_sol_gpu = n_sol - 1;
+        n_sol_cpu = 0;
+        n_sol_gpu = n_sol;
     }
     
 }
@@ -173,7 +172,9 @@ float fitness_tsp_hybrid(
 
     float time_gpu, time_cpu;
 
-    omp_set_nested(1);
+    if (num_solutions_cpu != 0) {
+        omp_set_nested(1);
+    }
 
     // --- Ejecución paralela CPU y GPU ---
     #pragma omp parallel sections num_threads(2) shared(d_distances, solution_ptr, fitness_ptr, solutions_gpu_ptr, n, num_solutions_gpu, num_solutions_cpu)
@@ -181,55 +182,66 @@ float fitness_tsp_hybrid(
         // --- Sección GPU ---
         #pragma omp section
         {
-            auto start = high_resolution_clock::now();
+            if (num_solutions_gpu != 0) {
+                auto start = high_resolution_clock::now();
 
-            auto fitness_gpu = thrust::device_vector<float>(num_solutions_gpu);
+                auto fitness_gpu = thrust::device_vector<float>(num_solutions_gpu);
 
-            fitness_tsp_cuda_2(
-                d_distances,
-                solutions_gpu_ptr,
-                thrust::raw_pointer_cast(fitness_gpu.data()),
-                n,
-                num_solutions_gpu
-            );
+                fitness_tsp_cuda_2(
+                    d_distances,
+                    solutions_gpu_ptr,
+                    thrust::raw_pointer_cast(fitness_gpu.data()),
+                    n,
+                    num_solutions_gpu
+                );
 
-            cudaMemcpy(fitness_ptr, fitness_gpu.data().get(), num_solutions_gpu * sizeof(float), cudaMemcpyDeviceToHost);
+                cudaMemcpy(fitness_ptr, fitness_gpu.data().get(), num_solutions_gpu * sizeof(float), cudaMemcpyDeviceToHost);
 
-            auto end = high_resolution_clock::now();
-            duration<double> elapsed = end - start;
-            time_gpu = elapsed.count() / num_solutions_gpu;
+                auto end = high_resolution_clock::now();
+                duration<double> elapsed = end - start;
+                time_gpu = elapsed.count() / num_solutions_gpu;
+            }
         }
 
         // --- Sección CPU ---
         #pragma omp section
         {
-            int max_threads = omp_get_max_threads() / 2;
-            omp_set_num_threads(std::max(1, max_threads - 1));
+            if (num_solutions_cpu != 0) {
+                int max_threads = omp_get_max_threads() / 2;
+                omp_set_num_threads(std::max(1, max_threads - 1));
 
-            auto start = high_resolution_clock::now();
+                auto start = high_resolution_clock::now();
 
-            fitness_tsp_omp_cpp(
-                distances_ptr,
-                &solution_ptr[num_solutions_gpu * n],
-                &fitness_ptr[num_solutions_gpu],
-                num_solutions_cpu,
-                n
-            );
+                fitness_tsp_omp_cpp(
+                    distances_ptr,
+                    &solution_ptr[num_solutions_gpu * n],
+                    &fitness_ptr[num_solutions_gpu],
+                    num_solutions_cpu,
+                    n
+                );
 
-            auto end = high_resolution_clock::now();
-            duration<double> elapsed = end - start;
-            time_cpu = elapsed.count() / num_solutions_cpu;
+                auto end = high_resolution_clock::now();
+                duration<double> elapsed = end - start;
+                time_cpu = elapsed.count() / num_solutions_cpu;
 
-            omp_set_num_threads(max_threads);
+                omp_set_num_threads(max_threads);
+            }
         }
     }
 
     omp_set_nested(0);
 
+    float new_speedup_factor = 1;
+    if (num_solutions_cpu != 0 && num_solutions_gpu != 0) {
+        new_speedup_factor = time_cpu / time_gpu;
+    } else if (num_solutions_cpu == 0 || num_solutions_gpu == 0) {
+        new_speedup_factor = speedup_factor;
+    }
+
     // --- Liberar memoria de la GPU ---
     cudaFree(solutions_gpu_ptr);
 
-    return time_cpu / time_gpu;
+    return new_speedup_factor;
 }
 
 
@@ -546,7 +558,9 @@ float fitness_hybrid(
 
     float time_gpu, time_cpu;
 
-    omp_set_nested(1);
+    if (num_weights_cpu != 0) {
+        omp_set_nested(1);
+    }
 
     // --- Secciones paralelas: GPU y CPU ---
     #pragma omp parallel sections num_threads(2) shared(weights_gpu_ptr, weights_cpu, X_train_ptr, y_train_ptr, fitness_values)
@@ -607,10 +621,17 @@ float fitness_hybrid(
 
     omp_set_nested(0);
 
+    float new_speedup_factor = 1;
+    if (num_weights_cpu != 0 && num_weights_gpu != 0) {
+        new_speedup_factor = time_cpu / time_gpu;
+    } else if (num_weights_cpu == 0 || num_weights_gpu == 0) {
+        new_speedup_factor = speedup_factor;
+    }
+
     // --- Liberar memoria de la GPU ---
     cudaFree(weights_gpu_ptr);
 
-    return time_cpu / time_gpu;
+    return new_speedup_factor; 
 }
 
 PYBIND11_MODULE(utils_gpu, m) {
