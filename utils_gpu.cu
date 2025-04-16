@@ -224,6 +224,8 @@ float fitness_tsp_hybrid(
         }
     }
 
+    omp_set_nested(0);
+
     // --- Liberar memoria de la GPU ---
     cudaFree(solutions_gpu_ptr);
 
@@ -602,6 +604,8 @@ float fitness_hybrid(
             omp_set_num_threads(max_threads);
         }
     }
+
+    omp_set_nested(0);
 
     // --- Liberar memoria de la GPU ---
     cudaFree(weights_gpu_ptr);
