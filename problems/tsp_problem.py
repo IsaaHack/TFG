@@ -82,14 +82,14 @@ class TSPProblem(problem.Problem):
     
     def crossover(self, population, crossover_rate):
         num_crossovers = int(np.floor(crossover_rate * len(population) / 2))
+        rng = np.random.default_rng(seed=np.random.randint(0, 2**32 - 1))
 
-        random_starts = np.empty(num_crossovers, dtype=np.int32)
-        random_ends = np.empty(num_crossovers, dtype=np.int32)
-        for k in range(num_crossovers):
-            # Seleccionar dos índices aleatorios sin reemplazo y ordenarlos (ya se requiere que estén sorted)
-            random_starts[k], random_ends[k] = np.sort(np.random.choice(self.n_cities, size=2, replace=False))
+        # Generación vectorizada de puntos de inicio y fin (sin duplicados ni sorting)
+        start = rng.integers(0, self.n_cities - 1, size=num_crossovers)
+        remaining = self.n_cities - start - 1
+        end = start + 1 + rng.integers(0, remaining, size=num_crossovers)
 
-        return utils.crossover_tsp(population, random_starts, random_ends)
+        return utils.crossover_tsp(population, start, end)
     
     def crossover2(self, population, crossover_rate):
         num_crossovers = int(np.floor(crossover_rate * len(population) / 2))
