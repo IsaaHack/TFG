@@ -17,7 +17,7 @@
 #include <chrono>
 
 using namespace std::chrono;
-namespace py = pybind11;
+namespace py = pybind11; 
 using namespace std;
 
 // Función para crear cápsula desde un puntero entero (dirección de memoria)
