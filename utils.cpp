@@ -6,6 +6,7 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
+#include <omp.h>
 
 namespace py = pybind11;
 using namespace std;
@@ -449,6 +450,69 @@ void mutation_tsp(
     }
 }
 
+py::array_t<double> update_pheromones_tsp(py::array_t<double> pheromones,
+                                          py::array_t<int> colony,
+                                          py::array_t<double> fitness_values,
+                                          double evaporation_rate)
+{
+    auto buf_phero = pheromones.request();
+    auto buf_colony = colony.request();
+    auto buf_fitness = fitness_values.request();
+
+    const int n_cities = buf_phero.shape[0];
+    const int n_solutions = buf_colony.shape[0];
+    const int solution_length = buf_colony.shape[1];
+
+    double *phero_ptr = static_cast<double *>(buf_phero.ptr);
+    const int *colony_ptr = static_cast<int *>(buf_colony.ptr);
+    const double *fitness_ptr = static_cast<double *>(buf_fitness.ptr);
+
+    // 1. Evaporación paralelizada con SIMD
+    const int total = n_cities * n_cities;
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < total; ++i)
+    {
+        phero_ptr[i] *= (1.0 - evaporation_rate);
+    }
+
+    // 2. Cálculo de depósitos optimizado
+    const int n_threads = omp_get_max_threads();
+    std::vector<double> delta_pheromones(total, 0.0);
+
+    #pragma omp parallel num_threads(n_threads)
+    {
+    #pragma omp for schedule(static) nowait
+        for (int sol = 0; sol < n_solutions; ++sol)
+        {
+            const double deposit = -1.0f / fitness_ptr[sol];
+            const int *solution = &colony_ptr[sol * solution_length];
+
+            for (int j = 0; j < solution_length - 1; ++j)
+            {
+                const int city_from = solution[j];
+                const int city_to = solution[j + 1];
+                const int idx1 = city_from * n_cities + city_to;
+                const int idx2 = city_to * n_cities + city_from;
+
+                #pragma omp atomic
+                delta_pheromones[idx1] += deposit;
+
+                #pragma omp atomic
+                delta_pheromones[idx2] += deposit;
+            }
+        }
+    }
+
+    // 3. Actualización final paralelizada
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < total; ++i)
+    {
+        phero_ptr[i] += delta_pheromones[i];
+    }
+
+    return pheromones;
+}
+
 // Exponer las funciones a Python con pybind11
 PYBIND11_MODULE(utils, m) {
     m.doc() = "Módulo de utilidades CPP";
@@ -471,4 +535,6 @@ PYBIND11_MODULE(utils, m) {
             py::arg("population"), py::arg("random_starts"), py::arg("random_ends"));
     m.def("mutation_tsp", &mutation_tsp, "Realiza la mutación de soluciones TSP",
             py::arg("population"), py::arg("individual_indices"), py::arg("indices1"), py::arg("indices2"));
+    m.def("update_pheromones_tsp", &update_pheromones_tsp, "Actualiza las feromonas para TSP",
+            py::arg("pheromones"), py::arg("colony"), py::arg("fitness_values"), py::arg("evaporation_rate"));
 }

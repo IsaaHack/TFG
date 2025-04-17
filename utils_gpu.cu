@@ -165,25 +165,25 @@ float fitness_tsp_hybrid(
     int num_solutions_gpu = 0;
     s_solutions_hybrid(num_solutions_cpu, num_solutions_gpu, num_solutions, speedup_factor);
 
-    // --- Preparar memoria en GPU ---
-    int* solutions_gpu_ptr = nullptr;
-    cudaMalloc((void**)&solutions_gpu_ptr, num_solutions_gpu * n * sizeof(int));
-    cudaMemcpy(solutions_gpu_ptr, solution_ptr, num_solutions_gpu * n * sizeof(int), cudaMemcpyHostToDevice);
-
     float time_gpu, time_cpu;
 
-    if (num_solutions_cpu != 0) {
-        omp_set_nested(1);
-    }
+    // if (num_solutions_cpu != 0) {
+    //     //omp_set_nested(1);
+    // }
 
     // --- Ejecución paralela CPU y GPU ---
-    #pragma omp parallel sections num_threads(2) shared(d_distances, solution_ptr, fitness_ptr, solutions_gpu_ptr, n, num_solutions_gpu, num_solutions_cpu)
+    #pragma omp parallel sections shared(d_distances, solution_ptr, fitness_ptr, n, num_solutions_gpu, num_solutions_cpu)
     {
         // --- Sección GPU ---
         #pragma omp section
         {
             if (num_solutions_gpu != 0) {
                 auto start = high_resolution_clock::now();
+
+                // --- Preparar memoria en GPU ---
+                int* solutions_gpu_ptr = nullptr;
+                cudaMalloc((void**)&solutions_gpu_ptr, num_solutions_gpu * n * sizeof(int));
+                cudaMemcpy(solutions_gpu_ptr, solution_ptr, num_solutions_gpu * n * sizeof(int), cudaMemcpyHostToDevice);
 
                 auto fitness_gpu = thrust::device_vector<float>(num_solutions_gpu);
 
@@ -197,6 +197,9 @@ float fitness_tsp_hybrid(
 
                 cudaMemcpy(fitness_ptr, fitness_gpu.data().get(), num_solutions_gpu * sizeof(float), cudaMemcpyDeviceToHost);
 
+                // --- Liberar memoria de la GPU ---
+                cudaFree(solutions_gpu_ptr);
+
                 auto end = high_resolution_clock::now();
                 duration<double> elapsed = end - start;
                 time_gpu = elapsed.count() / num_solutions_gpu;
@@ -207,10 +210,11 @@ float fitness_tsp_hybrid(
         #pragma omp section
         {
             if (num_solutions_cpu != 0) {
+                auto start = high_resolution_clock::now();
+
+                omp_set_nested(1);
                 int max_threads = omp_get_max_threads() / 2;
                 omp_set_num_threads(std::max(1, max_threads - 1));
-
-                auto start = high_resolution_clock::now();
 
                 fitness_tsp_omp_cpp(
                     distances_ptr,
@@ -220,16 +224,15 @@ float fitness_tsp_hybrid(
                     n
                 );
 
+                omp_set_num_threads(max_threads);
+                omp_set_nested(0);
+
                 auto end = high_resolution_clock::now();
                 duration<double> elapsed = end - start;
                 time_cpu = elapsed.count() / num_solutions_cpu;
-
-                omp_set_num_threads(max_threads);
             }
         }
     }
-
-    omp_set_nested(0);
 
     float new_speedup_factor = 1;
     if (num_solutions_cpu != 0 && num_solutions_gpu != 0) {
@@ -237,9 +240,6 @@ float fitness_tsp_hybrid(
     } else if (num_solutions_cpu == 0 || num_solutions_gpu == 0) {
         new_speedup_factor = speedup_factor;
     }
-
-    // --- Liberar memoria de la GPU ---
-    cudaFree(solutions_gpu_ptr);
 
     return new_speedup_factor;
 }
@@ -547,28 +547,22 @@ float fitness_hybrid(
     int num_weights_gpu = 0;
     s_solutions_hybrid(num_weights_cpu, num_weights_gpu, n_sol, speedup_factor);
 
-    // --- Reservar y copiar pesos a la GPU ---
-    float* weights_gpu_ptr = nullptr;
-    cudaMalloc((void**)&weights_gpu_ptr, num_weights_gpu * num_features * sizeof(float));
-    cudaMemcpy(weights_gpu_ptr, weights_ptr, num_weights_gpu * num_features * sizeof(float), cudaMemcpyHostToDevice);
-
-    cudaDeviceSynchronize();
-
     float* weights_cpu = weights_ptr + num_weights_gpu * num_features;
 
     float time_gpu, time_cpu;
 
-    if (num_weights_cpu != 0) {
-        omp_set_nested(1);
-    }
-
     // --- Secciones paralelas: GPU y CPU ---
-    #pragma omp parallel sections num_threads(2) shared(weights_gpu_ptr, weights_cpu, X_train_ptr, y_train_ptr, fitness_values)
+    #pragma omp parallel sections num_threads(2) shared(weights_cpu, X_train_ptr, y_train_ptr, fitness_values)
     {
         // --- Sección GPU ---
         #pragma omp section
         {
             auto start = high_resolution_clock::now();
+
+            // --- Reservar y copiar pesos a la GPU ---
+            float* weights_gpu_ptr = nullptr;
+            cudaMalloc((void**)&weights_gpu_ptr, num_weights_gpu * num_features * sizeof(float));
+            cudaMemcpy(weights_gpu_ptr, weights_ptr, num_weights_gpu * num_features * sizeof(float), cudaMemcpyHostToDevice);
 
             for (int i = 0; i < num_weights_gpu; ++i) {
                 float clas = 0.0f;
@@ -587,6 +581,9 @@ float fitness_hybrid(
                 fitness_values[i] = CLASS_WEIGHT * clas + RED_WEIGHT * red;
             }
 
+            // --- Liberar memoria de la GPU ---
+            cudaFree(weights_gpu_ptr);
+
             auto end = high_resolution_clock::now();
             duration<double> elapsed = end - start;
             time_gpu = elapsed.count() / num_weights_gpu;
@@ -595,10 +592,11 @@ float fitness_hybrid(
         // --- Sección CPU ---
         #pragma omp section
         {
+            auto start = high_resolution_clock::now();
+            
+            omp_set_nested(1);
             int max_threads = omp_get_max_threads() / 2;
             omp_set_num_threads(std::max(1, max_threads - 1));
-
-            auto start = high_resolution_clock::now();
 
             fitness_omp_cpp(
                 weights_cpu,
@@ -611,15 +609,17 @@ float fitness_hybrid(
                 w_size
             );
 
+            omp_set_nested(0);
+            omp_set_num_threads(max_threads);
+
             auto end = high_resolution_clock::now();
             duration<double> elapsed = end - start;
             time_cpu = elapsed.count() / num_weights_cpu;
-
-            omp_set_num_threads(max_threads);
+            
         }
     }
 
-    omp_set_nested(0);
+    
 
     float new_speedup_factor = 1;
     if (num_weights_cpu != 0 && num_weights_gpu != 0) {
@@ -627,9 +627,6 @@ float fitness_hybrid(
     } else if (num_weights_cpu == 0 || num_weights_gpu == 0) {
         new_speedup_factor = speedup_factor;
     }
-
-    // --- Liberar memoria de la GPU ---
-    cudaFree(weights_gpu_ptr);
 
     return new_speedup_factor; 
 }

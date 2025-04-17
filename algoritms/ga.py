@@ -1,8 +1,9 @@
 from algoritms.algoritm import Algoritm
 import numpy as np
+from time import time
 
 class GA(Algoritm):
-    def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, generations=100, seed=None, tournament_size=3, executer_type='hybrid', executer=None):
+    def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, generations=100, seed=None, tournament_size=3, executer_type='hybrid', executer=None, timelimit=np.inf, print_freq=None):
         required_methods = ['fitness', 'generate_solution', 'mutation', 'crossover']
         super().__init__(problem, required_methods, executer_type, executer)
 
@@ -12,6 +13,23 @@ class GA(Algoritm):
         self.generations = generations
         self.seed = seed
         self.tournament_size = tournament_size
+        self.timelimit = timelimit
+        self.print_freq = print_freq
+
+        if generations == np.inf and timelimit == np.inf:
+            raise ValueError("Either generations or timelimit must be set to a finite value.")
+        if population_size <= 0:
+            raise ValueError("Population size must be greater than 0.")
+        if mutation_rate < 0 or mutation_rate > 1:
+            raise ValueError("Mutation rate must be between 0 and 1.")
+        if crossover_rate < 0 or crossover_rate > 1:
+            raise ValueError("Crossover rate must be between 0 and 1.")
+        if tournament_size <= 0:
+            raise ValueError("Tournament size must be greater than 0.")
+        if print_freq is not None and print_freq <= 0:
+            raise ValueError("Print frequency must be greater than 0.")
+        if generations <= 0:
+            raise ValueError("Generations must be greater than 0.")
 
     def initialize_population(self):
         return self.problem.generate_solution(self.population_size)
@@ -34,9 +52,10 @@ class GA(Algoritm):
         fitness_values[1:] = self.executer.execute(new_population[1:])
 
         return new_population, fitness_values
-        
     
     def fit(self):
+        time_start = time()
+
         if self.seed is not None:
             np.random.seed(self.seed)
 
@@ -48,7 +67,14 @@ class GA(Algoritm):
         no_improvement = 0
         gap = 0.1
 
-        while actual_generation < self.generations:
+        if self.generations != np.inf and self.print_freq is None:
+            frequency = self.generations * gap
+        elif self.print_freq is None:
+            frequency = 1000
+        else:
+            frequency = self.print_freq
+
+        while actual_generation < self.generations and time() - time_start < self.timelimit:
             # Selection
             new_population = self.selection(population, fitness_values)
             # Crossover
@@ -87,8 +113,10 @@ class GA(Algoritm):
 
             actual_generation += 1
 
-            if actual_generation % int(self.generations * gap) == 0 or actual_generation == self.generations:
-                print(f"Generation {actual_generation}/{self.generations} - Best fitness: {best_fit:.4f}")
+            if self.generations != np.inf and self.timelimit == np.inf:
+                self.print_iter(actual_generation, self.generations, best_fit, frequency=frequency)
+            else:
+                self.print_time(actual_generation, self.generations, time_start, self.timelimit, best_fit, frequency=frequency)
 
         return np.copy(best)
 

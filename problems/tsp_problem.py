@@ -2,6 +2,7 @@ import problems.problem as problem
 import utils, utils_gpu
 import cupy as cp
 import numpy as np
+from numba import njit, prange
 
 class TSPProblem(problem.Problem):
     def __init__(self, distances):
@@ -183,3 +184,141 @@ class TSPProblem(problem.Problem):
         # temp = population[i][start:end+1].copy()
         # np.random.shuffle(temp)
         # population[i][start:end+1] = temp
+
+    def initialize_pheromones(self):
+        pheromones = np.ones((self.n_cities, self.n_cities), dtype=np.float32)
+        pheromones /= self.n_cities
+        np.fill_diagonal(pheromones, 0.0)  # Evitar feromonas en la diagonal
+        return pheromones
+    
+    def construct_solutions2(self, colony_size, pheromones, alpha, beta):
+        # Inicializar el arreglo de soluciones y el seguimiento de ciudades visitadas.
+        solutions = np.empty((colony_size, self.n_cities), dtype=np.int32)
+        # Seleccionar aleatoriamente la ciudad inicial para cada hormiga.
+        # Se asume colony_size <= self.n_cities. Si no fuera el caso, se puede modificar la selección.
+        solutions[:, 0] = np.random.choice(self.n_cities, colony_size, replace=False)
+        visited = np.zeros((colony_size, self.n_cities), dtype=bool)
+        visited[np.arange(colony_size), solutions[:, 0]] = True
+
+        for step in range(1, self.n_cities):
+            # La ciudad actual de cada hormiga
+            current_cities = solutions[:, step - 1]
+            
+            # Extraer de forma vectorizada la feromona y la distancia para cada solución
+            pheromone = np.power(pheromones[current_cities, :], alpha)  # (colony_size, n_cities)
+            distance_segment = self.distances[current_cities, :].copy()  # (colony_size, n_cities)
+            # Evitar división por cero en la diagonal (misma ciudad)
+            distance_segment[distance_segment == 0] = 1e-10
+            heuristic = np.power(1.0 / distance_segment, beta)
+            
+            # Calcular la probabilidad sin normalizar
+            probabilities = pheromone * heuristic
+            
+            # Enmascarar las ciudades ya visitadas (asigna 0 a las posiciones ya visitadas)
+            probabilities[visited] = 0.0
+            
+            # Manejo de filas con suma cero
+            row_sums = probabilities.sum(axis=1)
+            zero_rows = row_sums == 0
+            if np.any(zero_rows):
+                for idx in np.where(zero_rows)[0]:
+                    unvisited = ~visited[idx]
+                    probabilities[idx, unvisited] = 1.0 / np.count_nonzero(unvisited)
+                row_sums = probabilities.sum(axis=1)
+            
+            # Normalizar las probabilidades
+            probabilities = probabilities / row_sums[:, np.newaxis]
+            
+            # Selección vectorizada de la siguiente ciudad usando cumsum.
+            cumulative_probs = np.cumsum(probabilities, axis=1)
+            random_nums = np.random.rand(colony_size, 1)  # Una muestra por cada hormiga
+            # Para cada hormiga se elige el índice (ciudad) donde el valor acumulado supera el número aleatorio.
+            next_cities = (cumulative_probs >= random_nums).argmax(axis=1)
+            
+            solutions[:, step] = next_cities
+            visited[np.arange(colony_size), next_cities] = True
+
+        return solutions
+    
+    def construct_solutions(self, colony_size, pheromones, alpha, beta):
+        n_cities = self.n_cities
+        solutions = np.empty((colony_size, n_cities), dtype=np.int32)
+        solutions[:, 0] = np.random.choice(n_cities, colony_size, replace=False)
+        
+        # Precomputación de matrices (solo una vez)
+        if not hasattr(self, 'heuristic_matrix'):
+            inv_dist = np.divide(1.0, self.distances, 
+                            out=np.full_like(self.distances, 1e10, dtype=np.float64),
+                            where=self.distances != 0)
+            self.heuristic_matrix = np.power(inv_dist, beta, dtype=np.float64)
+        
+        # Buffers preasignados
+        visited = np.zeros((colony_size, n_cities), dtype=np.uint8)
+        visited[np.arange(colony_size), solutions[:, 0]] = 1
+        prob_buffer = np.zeros((colony_size, n_cities), dtype=np.float64)
+        cum_buffer = np.zeros_like(prob_buffer)
+        
+        # Máscaras y constantes
+        #ones = np.ones((colony_size, 1), dtype=np.float32)
+        epsilon = np.finfo(np.float64).eps
+        
+        for step in range(1, n_cities):
+            current = solutions[:, step-1]
+            
+            # Cálculo vectorizado sin loops
+            np.power(pheromones[current], alpha, out=prob_buffer)
+            prob_buffer *= self.heuristic_matrix[current]
+            np.multiply(prob_buffer, 1 - visited, out=prob_buffer)
+            
+            # Manejo de ceros con operaciones matriciales
+            row_sums = prob_buffer.sum(axis=1, keepdims=True)
+            np.divide(prob_buffer, row_sums + epsilon, out=prob_buffer, where=row_sums > 0)
+            np.multiply(prob_buffer, (row_sums > 0).astype(np.float64), out=prob_buffer)
+            
+            # Selección por búsqueda binaria vectorizada
+            np.cumsum(prob_buffer, axis=1, out=cum_buffer)
+            rand = np.random.rand(colony_size, 1).astype(np.float64)
+            next_cities = (cum_buffer >= rand).argmax(axis=1)
+            
+            # Actualización sin loops usando índices mágicos
+            idx = np.arange(colony_size)
+            solutions[:, step] = next_cities
+            visited[idx, next_cities] = 1
+
+        return solutions
+    
+    def update_pheromones(self, pheromones, colony, fitness_values, evaporation_rate):
+        # Evaporación global: se reduce la feromona
+        pheromones *= (1 - evaporation_rate)
+        
+        # Asegurarse de que 'colony' sea un arreglo NumPy (si no lo es ya)
+        colony = np.asarray(colony)
+        
+        # Extraer los índices de ciudades consecutivas:
+        # city_from tendrá la primera parte de cada tour y city_to la segunda.
+        city_from = colony[:, :-1]  # forma: (n_soluciones, n_cities-1)
+        city_to = colony[:, 1:]     # forma: (n_soluciones, n_cities-1)
+        
+        # Calcular la contribución para cada solución 
+        # (se usa broadcasting para dividir cada fila por el fitness correspondiente)
+        deposit = -1.0 / fitness_values[:, None]
+        
+        # Actualizamos la feromona en ambas direcciones utilizando np.add.at para manejar índices repetidos
+        np.add.at(pheromones, (city_from, city_to), deposit)
+        np.add.at(pheromones, (city_to, city_from), deposit)
+        
+        return pheromones
+    
+    def update_pheromones2(self, pheromones, colony, fitness_values, evaporation_rate):
+        return utils.update_pheromones_tsp(
+            pheromones,
+            colony,
+            fitness_values,
+            evaporation_rate
+        )
+    
+    def reset_pheromones(self, pheromones):
+        pheromones *= 0
+        pheromones += 1 / self.n_cities
+        np.fill_diagonal(pheromones, 0.0)
+        return pheromones

@@ -5,7 +5,7 @@ from sklearn.datasets import load_digits
 import numpy as np
 from scipy.spatial.distance import cdist
 import itertools
-from algoritms.ga import GA
+from algoritms.aco import ACO
 
 np.random.seed(42)  # Para reproducibilidad
 
@@ -70,7 +70,7 @@ print("y_train shape:", y_train.shape)
 
 problem = ClasProblem(X_train, y_train)
 problem2 = TSPProblem(dist_matrix)
-ga = GA(problem, population_size=50, generations=np.inf, seed=42, mutation_rate=0.2, executer_type='hybrid', timelimit=60)
+ga = ACO(problem, colony_size=50, iterations=np.inf, seed=42, executer_type='hybrid', evaporation_rate=0.03, alpha=1.0, beta=1.5, timelimit=60)
 
 print("Starting GA Clas...")
 start = time.time()
@@ -88,8 +88,7 @@ print("Fitness from GA:", fit)
 
 print("-----------------------------------------------------------")
 
-ga = GA(problem2, population_size=1024, generations=np.inf, seed=42, mutation_rate=0.2, executer_type='multi', timelimit=60*15,
-        print_freq=100000)
+ga = ACO(problem2, colony_size=50, iterations=np.inf, seed=42, executer_type='multi', alpha=1.5, beta=3.0, timelimit=60*15)
 print("Starting GA TSP...")
 
 start = time.time()
@@ -103,3 +102,6 @@ print("Fitness from GA:", -fit)
 print("Verifying path...")
 if len(path) == len(set(path)) and np.all(np.isin(path, np.arange(num_cities))):
     print("Path is valid")
+else:
+    print("Path is invalid")
+    print("Repeated cities or out of range")

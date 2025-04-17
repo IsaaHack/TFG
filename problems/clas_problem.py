@@ -4,6 +4,8 @@ import cupy as cp
 import numpy as np
 
 SQRT_03 = np.sqrt(0.3)
+MIN_STD = 1e-3
+MAX_STD = 0.25
 
 class ClasProblem(problem.Problem):
     def __init__(self, X, Y, threshold=0.1):
@@ -140,3 +142,55 @@ class ClasProblem(problem.Problem):
         people_to_mutate = np.random.randint(0, population.shape[0], estimated_mutations)
 
         population[people_to_mutate, genes_to_mutate] = np.clip(population[people_to_mutate, genes_to_mutate] + mutation, 0, 1)
+
+    def initialize_pheromones(self):
+        means = np.random.uniform(0, 1, size=self.n_features).astype(np.float32)
+        stds = np.full(self.n_features, 0.2).astype(np.float32)
+        return means, stds
+    
+    def construct_solutions(self, colony_size, pheromones, alpha, beta):
+        means, stds = pheromones
+        
+        # Ajustar desviaciones usando beta (control de exploración)
+        adjusted_stds = np.clip(stds * (1.0 / (beta + 1e-5)), MIN_STD, MAX_STD)
+        
+        # Muestreo vectorizado con influencia de alpha en las medias
+        solutions = np.random.normal(
+            means * alpha,  # Alpha amplifica la atracción a buenas características
+            adjusted_stds,
+            size=(colony_size, self.n_features)
+        ).astype(np.float32)
+        
+        solutions = np.clip(solutions, 0.0, 1.0)
+
+        return solutions
+    
+    def update_pheromones(self, pheromones, colony, fitness_values, evaporation_rate):
+        means, stds = pheromones
+        fitness = np.array(fitness_values, dtype=np.float32)
+
+        # Normalizar fitness para usar como pesos
+        fitness = fitness - np.min(fitness)
+        fitness = fitness / (np.max(fitness) + 1e-10)
+        weights = 1.0 - fitness  # Mejor fitness → peso más alto
+        weights /= np.sum(weights)
+
+        # Calcular nueva media ponderada
+        new_means = (1 - 0.9) * means + 0.1 * np.average(colony, axis=0, weights=weights)
+
+        # Estimar desviación estándar con varianza ponderada (o usar la de la élite)
+        elite_count = max(1, len(colony) // 5)
+        elite = colony[np.argsort(fitness_values)[:elite_count]]
+        elite_std = np.std(elite, axis=0)
+        
+        new_stds = (1 - evaporation_rate * 0.5) * stds + 0.5 * elite_std
+        new_stds = np.clip(new_stds, MIN_STD, MAX_STD)
+
+        return new_means, new_stds
+
+    
+    def reset_pheromones(self, pheromones):
+        pheromones = self.initialize_pheromones()
+        return pheromones
+    
+
