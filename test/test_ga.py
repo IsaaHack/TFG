@@ -70,7 +70,7 @@ print("y_train shape:", y_train.shape)
 
 problem = ClasProblem(X_train, y_train)
 problem2 = TSPProblem(dist_matrix)
-ga = GA(problem, population_size=50, generations=np.inf, seed=42, mutation_rate=0.2, executer_type='hybrid', timelimit=60)
+ga = GA(problem, population_size=50, generations=300, seed=42, executer_type='gpu')
 
 print("Starting GA Clas...")
 start = time.time()
@@ -88,8 +88,7 @@ print("Fitness from GA:", fit)
 
 print("-----------------------------------------------------------")
 
-ga = GA(problem2, population_size=1024, generations=np.inf, seed=42, mutation_rate=0.2, executer_type='multi', timelimit=60*15,
-        print_freq=100000)
+ga = GA(problem2, population_size=1024, generations=100, seed=42, mutation_rate=0.2, executer_type='gpu')
 print("Starting GA TSP...")
 
 start = time.time()

@@ -1,6 +1,7 @@
 from algoritms.algoritm import Algoritm
 import numpy as np
 from time import time
+import cupy as cp
 
 class ACO(Algoritm):
     def __init__(self, problem, colony_size=50, evaporation_rate=0.1, iterations=100, alpha=1.0, beta=2.0, seed=None,reset_threshold=100, executer_type='single', executer=None, timelimit=np.inf, print_freq=None):
@@ -40,6 +41,7 @@ class ACO(Algoritm):
 
         if self.seed is not None:
             np.random.seed(self.seed)
+            cp.random.seed(self.seed)
 
         # Inicializa las feromonas del problema.
         pheromones = self.problem.initialize_pheromones()
@@ -57,9 +59,11 @@ class ACO(Algoritm):
         else:
             frequency = self.print_freq
 
+        colony = self.problem.generate_solution(self.colony_size)
+
         while iteration < self.iterations and time() - time_start < self.timelimit:
             # Se generan soluciones a partir de las feromonas.
-            colony = self.problem.construct_solutions(self.colony_size, pheromones, self.alpha, self.beta)
+            self.problem.construct_solutions(self.colony_size, pheromones, self.alpha, self.beta, out=colony)
             if best is not None:
                 # Se reinicializan las soluciones de la colonia con la mejor solución encontrada.
                 colony[0] = best

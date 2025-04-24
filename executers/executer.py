@@ -39,18 +39,8 @@ class HybridExecuter(LocalExecuter):
         self.s_gpu_omp = 1
 
     def benchmark(self, population):
-        t = time.time()
-        for i in range(NUM_SAMPLES):
-            self.problem.fitness_omp(population)
-        t = time.time() - t 
-        time_omp = t / NUM_SAMPLES
-
-        t = time.time()
-        for i in range(NUM_SAMPLES):
-            self.problem.fitness_gpu(population)
-        t = time.time() - t
-        time_gpu = t / NUM_SAMPLES
-        self.s_gpu_omp = time_omp / time_gpu
+        for _ in range(NUM_SAMPLES):
+            _, self.s_gpu_omp = self.problem.fitness_hybrid(population, self.s_gpu_omp)
 
     def execute(self, population):
         fitness_values, self.s_gpu_omp = self.problem.fitness_hybrid(population, self.s_gpu_omp)

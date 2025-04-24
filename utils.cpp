@@ -513,6 +513,84 @@ py::array_t<double> update_pheromones_tsp(py::array_t<double> pheromones,
     return pheromones;
 }
 
+void construct_solutions_tsp_inner(
+    py::array_t<int32_t> solutions,
+    py::array_t<uint8_t> visited,
+    py::array_t<double> pheromones,
+    py::array_t<double> heuristic_matrix,
+    py::array_t<double> rand_matrix,
+    int colony_size,
+    int n_cities,
+    double alpha,
+    double epsilon)
+{
+    // Obtener acceso a los buffers de los arrays
+    auto solutions_buf = solutions.request();
+    auto visited_buf = visited.request();
+    auto pheromones_buf = pheromones.request();
+    auto heuristic_buf = heuristic_matrix.request();
+    auto rand_buf = rand_matrix.request();
+
+    // Obtener punteros a los datos
+    int32_t* solutions_ptr = static_cast<int32_t*>(solutions_buf.ptr);
+    uint8_t* visited_ptr = static_cast<uint8_t*>(visited_buf.ptr);
+    double* pheromones_ptr = static_cast<double*>(pheromones_buf.ptr);
+    double* heuristic_ptr = static_cast<double*>(heuristic_buf.ptr);
+    double* rand_ptr = static_cast<double*>(rand_buf.ptr);
+
+    #pragma omp parallel for schedule(static)
+    for(int i = 0; i < colony_size; ++i) {
+        for(int step = 1; step < n_cities; ++step) {
+            
+            const int current = solutions_ptr[i * n_cities + (step - 1)];
+            double rand = rand_ptr[i * (n_cities - 1) + (step - 1)];
+            
+            double total = 0.0;
+            double probabilities[n_cities];
+            
+            // Calcular probabilidades no normalizadas
+            for(int city = 0; city < n_cities; ++city) {
+                if(!visited_ptr[i * n_cities + city]) {
+                    const int idx = current * n_cities + city;
+                    const double ph = std::pow(pheromones_ptr[idx], alpha);
+                    probabilities[city] = ph * heuristic_ptr[idx];
+                    total += probabilities[city];
+                } else {
+                    probabilities[city] = 0.0;
+                }
+            }
+            
+            // Encontrar la siguiente ciudad
+            int selected = -1;
+            double cumulative = 0.0;
+            const double inv_total = (total > 0) ? 1.0 / (total + epsilon) : 0.0;
+            
+            for(int city = 0; city < n_cities; ++city) {
+                if(!visited_ptr[i * n_cities + city]) {
+                    cumulative += probabilities[city] * inv_total;
+                    if(cumulative >= rand && selected == -1) {
+                        selected = city;
+                    }
+                }
+            }
+            
+            // Fallback: seleccionar primera ciudad no visitada
+            if(selected == -1) {
+                for(int city = 0; city < n_cities; ++city) {
+                    if(!visited_ptr[i * n_cities + city]) {
+                        selected = city;
+                        break;
+                    }
+                }
+            }
+
+            // Actualizar solución y visitados
+            solutions_ptr[i * n_cities + step] = selected;
+            visited_ptr[i * n_cities + selected] = 1;
+        }
+    }
+}
+
 // Exponer las funciones a Python con pybind11
 PYBIND11_MODULE(utils, m) {
     m.doc() = "Módulo de utilidades CPP";
@@ -537,4 +615,8 @@ PYBIND11_MODULE(utils, m) {
             py::arg("population"), py::arg("individual_indices"), py::arg("indices1"), py::arg("indices2"));
     m.def("update_pheromones_tsp", &update_pheromones_tsp, "Actualiza las feromonas para TSP",
             py::arg("pheromones"), py::arg("colony"), py::arg("fitness_values"), py::arg("evaporation_rate"));
+    m.def("construct_solutions_tsp_inner", &construct_solutions_tsp_inner, "Construye soluciones para TSP",
+            py::arg("solutions"), py::arg("visited"), py::arg("pheromones"),
+            py::arg("heuristic_matrix"), py::arg("rand_matrix"), py::arg("colony_size"),
+            py::arg("n_cities"), py::arg("alpha"), py::arg("epsilon"));
 }

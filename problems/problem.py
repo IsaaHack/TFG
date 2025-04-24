@@ -1,6 +1,11 @@
 from abc import ABC, abstractmethod
+import os
 
 class Problem(ABC):
+    def __init__(self):
+        os.environ['CUDA_ACCELERATOR'] = 'cub,cutensor,cutensornet'
+        os.environ['CUDA_TF32'] = '1'
+
     @abstractmethod
     def generate_solution(self, num_samples=1):
         pass

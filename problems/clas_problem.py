@@ -43,6 +43,39 @@ class ClasProblem(problem.Problem):
     
     def fitness_gpu(self, solutions):
         solutions_gpu = cp.asarray(solutions, dtype=cp.float32, order='C')
+        fitness_values = cp.empty(solutions_gpu.shape[0], dtype=cp.float32)
+
+        cp.cuda.Device().synchronize()  # Sincroniza el dispositivo antes de llamar a la función CUDA
+
+        # Vectorización de todas las operaciones
+        mask = solutions_gpu >= self.threshold  # (n_solutions, n_features)
+        sqrt_weights = cp.multiply(cp.sqrt(solutions_gpu), mask)  # (n_solutions, n_features)
+
+        # Crear matriz 3D de características ponderadas (n_solutions, n_samples, n_features)
+        X_all = cp.ascontiguousarray(self.X_gpu[None, :, :] * sqrt_weights[:, None, :])
+
+        # Cálculo eficiente de todas las matrices de distancias
+        G = cp.einsum('ijk,ilk->ijl', X_all, X_all)
+        norms = cp.sum(cp.square(X_all), axis=2)  # (n_solutions, n_samples)
+        D = norms[:, :, None] + norms[:, None, :] - 2 * G
+
+        # Configurar diagonales a infinito
+        n_samples = self.X_gpu.shape[0]
+        D[:, cp.arange(n_samples), cp.arange(n_samples)] = cp.inf
+
+        # Cálculo vectorizado de predicciones y métricas
+        index_pred = cp.argmin(D, axis=2)  # Índices de vecinos más cercanos
+        prediction_labels = self.Y_gpu[index_pred]  # Etiquetas predichas
+
+        clas_rate = 100 * cp.mean(prediction_labels == self.Y_gpu, axis=1)  # Tasa de acierto
+        red_rate = 100 * cp.sum(~mask, axis=1) / self.n_features  # Tasa de reducción
+
+        # Cálculo final del fitness
+        fitness_values = clas_rate * 0.75 + red_rate * 0.25
+        return fitness_values.get()  # Convertir de cupy a numpy
+    
+    def fitness_gpu2(self, solutions):
+        solutions_gpu = cp.asarray(solutions, dtype=cp.float32, order='C')
 
         X_capsule = utils_gpu.create_capsule(self.X_gpu.data.ptr)
         Y_capsule = utils_gpu.create_capsule(self.Y_gpu.data.ptr)
@@ -148,20 +181,26 @@ class ClasProblem(problem.Problem):
         stds = np.full(self.n_features, 0.2).astype(np.float32)
         return means, stds
     
-    def construct_solutions(self, colony_size, pheromones, alpha, beta):
+    def construct_solutions(self, colony_size, pheromones, alpha, beta, out=None):
         means, stds = pheromones
+
+        # Ajustar medias usando alpha (control de explotación)
+        adjusted_means = np.clip(means * (1.0 / (alpha + 1e-5)), 0.0, 1.0)
         
         # Ajustar desviaciones usando beta (control de exploración)
         adjusted_stds = np.clip(stds * (1.0 / (beta + 1e-5)), MIN_STD, MAX_STD)
         
         # Muestreo vectorizado con influencia de alpha en las medias
         solutions = np.random.normal(
-            means * alpha,  # Alpha amplifica la atracción a buenas características
+            adjusted_means,
             adjusted_stds,
             size=(colony_size, self.n_features)
         ).astype(np.float32)
         
         solutions = np.clip(solutions, 0.0, 1.0)
+
+        if out is not None:
+            out[:] = solutions
 
         return solutions
     

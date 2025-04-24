@@ -15,7 +15,7 @@ class Algoritm(ABC):
                 self.executer = GpuExecuter(problem)
             elif executer_type == 'hybrid':
                 self.executer = HybridExecuter(problem)
-                self.executer.benchmark(problem.generate_solution(32))
+                self.executer.benchmark(problem.generate_solution(16))
             else:
                 raise ValueError(f"Unknown executer type: {executer_type} available: single, multi, gpu, hybrid")
         else:

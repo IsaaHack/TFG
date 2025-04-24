@@ -1,6 +1,7 @@
 from algoritms.algoritm import Algoritm
 import numpy as np
 from time import time
+import cupy as cp
 
 class GA(Algoritm):
     def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, generations=100, seed=None, tournament_size=3, executer_type='hybrid', executer=None, timelimit=np.inf, print_freq=None):
@@ -58,6 +59,7 @@ class GA(Algoritm):
 
         if self.seed is not None:
             np.random.seed(self.seed)
+            cp.random.seed(self.seed)
 
         population = self.initialize_population()
         fitness_values = self.executer.execute(population)

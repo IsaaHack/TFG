@@ -70,11 +70,11 @@ print("y_train shape:", y_train.shape)
 
 problem = ClasProblem(X_train, y_train)
 problem2 = TSPProblem(dist_matrix)
-ga = ACO(problem, colony_size=50, iterations=np.inf, seed=42, executer_type='hybrid', evaporation_rate=0.03, alpha=1.0, beta=1.5, timelimit=60)
+aco = ACO(problem, colony_size=50, iterations=300, seed=42, executer_type='gpu', evaporation_rate=0.03, alpha=1.0, beta=1.5)
 
-print("Starting GA Clas...")
+print("Starting ACO Clas...")
 start = time.time()
-weights = ga.fit()
+weights = aco.fit()
 end = time.time()
 print("Time:", end - start)
 
@@ -84,19 +84,19 @@ red_rate = problem.red_rate(weights)
 
 print("Classification rate:", class_rate)
 print("Reduction rate:", red_rate)
-print("Fitness from GA:", fit)
+print("Fitness from ACO:", fit)
 
 print("-----------------------------------------------------------")
 
-ga = ACO(problem2, colony_size=50, iterations=np.inf, seed=42, executer_type='multi', alpha=1.5, beta=3.0, timelimit=60*15)
-print("Starting GA TSP...")
+aco = ACO(problem2, colony_size=1024, iterations=100, seed=42, executer_type='gpu', alpha=1.7, beta=1.2)
+print("Starting ACO TSP...")
 
 start = time.time()
-path = ga.fit()
+path = aco.fit()
 end = time.time()
 print("Time:", end - start)
 fit = problem2.fitness(path)
-print("Fitness from GA:", -fit)
+print("Fitness from ACO:", -fit)
 
 #Verify path
 print("Verifying path...")
