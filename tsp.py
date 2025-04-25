@@ -6,7 +6,6 @@ from algoritms.ga import GA
 from time import time
 from problems.tsp_problem import TSPProblem
 
-
 def parse_header(lines):
     """
     Parse header lines of a TSPlib file into a metadata dictionary.
@@ -70,6 +69,8 @@ def build_distance_matrix(meta, coords_arr, edge_lines):
             matrix = np.zeros((n, n), dtype=int)
             tri_k = 0 if fmt == 'UPPER_ROW' else 1
             i_idx, j_idx = np.triu_indices(n, k=tri_k)
+            if len(weights) != len(i_idx):
+                raise ValueError(f"Mismatch between weights length ({len(weights)}) and expected elements ({len(i_idx)}) for {fmt}.")
             matrix[i_idx, j_idx] = weights
             matrix[j_idx, i_idx] = weights
         else:
@@ -99,7 +100,6 @@ def main():
 
     dist_matrix_np = np.array(dist_matrix, dtype=np.float32)
 
-
     print("Number of cities:", dist_matrix_np.shape[0])
     print("Distance matrix shape:", dist_matrix_np.shape)
 
@@ -108,7 +108,7 @@ def main():
         print("Using Genetic Algorithm...")
         algoritm = GA(problem, population_size=1024, generations=100, seed=42, executer_type='gpu', mutation_rate=0.2)
     else:
-        algoritm = ACO(problem, colony_size=1024, iterations=10000, seed=42, executer_type='gpu', alpha=1.0, beta=3.0, evaporation_rate=0.5)
+        algoritm = ACO(problem, colony_size=1024*16, iterations=100, seed=42, executer_type='multi', alpha=1.3, beta=3.0, evaporation_rate=0.5)
 
     print("Starting Algorithm...")
     start = time()
@@ -160,15 +160,18 @@ def main():
         else:
             fitness_opt = problem.fitness(np.array(opt_tour))
             print("Fitness del óptimo:", -fitness_opt)
-            #Comparar fitness
-            ratio = fit / fitness_opt
-            print("La solucion es", ratio, "veces peor que la solución óptima")
+
+            # Comparar fitness
+            ratio = np.round(-(fit - fitness_opt) / abs(fitness_opt), 4)*100
+            print("La solución encontrada es", ratio, "% peor que la solución óptima")
+
             if ratio < 0:
-                print("⚠️ La solución óptima es peor que la solución encontrada.")
+                print("✅ La solución encontrada es mejor que el óptimo registrado (posible error en el óptimo)")
             elif ratio > 0:
-                print("✅ La solución óptima es mejor que la solución encontrada.")
+                print("📉 La solución encontrada es peor que el óptimo registrado.")
             else:
-                print("✅ La solución óptima es igual a la solución encontrada.")
+                print("🎯 La solución encontrada es igual al óptimo.")
+
     else:
         print("\nNo se encontró archivo con la solución óptima.")
 

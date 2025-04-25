@@ -7,10 +7,10 @@ import numpy as np
 _raw_kernel_code = r"""
 extern "C" __global__ void construct_kernels(
     const int nCities,
-    const double* distances,
-    const double* pheromonesAlpha,
-    const double* heuristicMatrix,
-    const double* randArr,
+    const float* distances,
+    const float* pheromonesAlpha,
+    const float* heuristicMatrix,
+    const float* randArr,
     int* solutions)
 {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -26,15 +26,15 @@ extern "C" __global__ void construct_kernels(
 
     for (int step = 1; step < nCities; ++step) {
         int prev = solutions[idx * nCities + step - 1];
-        double sumProb = 0.0;
+        float sumProb = 0.0;
         for (int j = 0; j < nCities; ++j) {
             if (!v[j]) {
                 sumProb += pheromonesAlpha[prev * nCities + j] *
                            heuristicMatrix[prev * nCities + j];
             }
         }
-        double threshold = randArr[idx * nCities + step] * sumProb;
-        double cumulative = 0.0;
+        float threshold = randArr[idx * nCities + step] * sumProb;
+        float cumulative = 0.0;
         int nextCity = 0;
         for (int j = 0; j < nCities; ++j) {
             if (!v[j]) {
@@ -420,18 +420,19 @@ class TSPProblem(problem.Problem):
         gpu_solutions = cp.empty((colony_size, n), dtype=cp.int32)
 
         # Compute pheromones^alpha each call to reflect updates
-        pheromones_alpha = cp.asarray(pheromones, dtype=cp.float64) ** alpha
+        pheromones_alpha = cp.asarray(pheromones, dtype=cp.float32)
+        pheromones_alpha = cp.power(pheromones_alpha, alpha)
 
         # precompute heuristicMatrix
         if not hasattr(self, 'heuristic_beta') or self.heuristic_beta != beta:
             inv_dist = cp.where(self.distances_gpu != 0,
                                 1.0 / self.distances_gpu,
-                                cp.finfo(cp.float64).max)
-            self.heuristic_matrix = inv_dist ** beta
+                                cp.finfo(cp.float32).max)
+            self.heuristic_matrix = cp.power(inv_dist, beta, dtype=cp.float32)
             self.heuristic_beta = beta
 
         # random thresholds
-        rand = cp.random.random((colony_size, n), dtype=cp.float64)
+        rand = cp.random.random((colony_size, n), dtype=cp.float32)
 
         threads = 32
         blocks = (colony_size + threads - 1) // threads
