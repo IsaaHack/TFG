@@ -303,9 +303,9 @@ __global__ void distance_kernel(const float* __restrict__ X, const float* __rest
             sum += w * diff * diff;
         }
 
-        float dist = sqrtf(sum);
-        distances[i * num_samples + j] = dist;
-        distances[j * num_samples + i] = dist;
+        //float dist = sqrtf(sum);
+        distances[i * num_samples + j] = sum;
+        distances[j * num_samples + i] = sum;
     }
 }
 

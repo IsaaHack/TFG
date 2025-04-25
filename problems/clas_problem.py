@@ -8,7 +8,7 @@ MIN_STD = 1e-3
 MAX_STD = 0.25
 
 class ClasProblem(problem.Problem):
-    def __init__(self, X, Y, threshold=0.1):
+    def __init__(self, X, Y, threshold=0.1, alpha=0.25):
         self.X_gpu = cp.asarray(X, dtype=cp.float32, order='C')
         self.Y_gpu = cp.asarray(Y, dtype=cp.int32, order='C')
         self.X = X
@@ -16,6 +16,7 @@ class ClasProblem(problem.Problem):
         self.n_samples = len(X)
         self.n_features = len(X[0])
         self.threshold = threshold
+        self.alpha = alpha
 
         cp.cuda.Device().synchronize()
 
