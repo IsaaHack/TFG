@@ -433,7 +433,7 @@ class TSPProblem(problem.Problem):
         # random thresholds
         rand = cp.random.random((colony_size, n), dtype=cp.float64)
 
-        threads = 256
+        threads = 32
         blocks = (colony_size + threads - 1) // threads
         shared_mem = threads * n * cp.dtype(cp.bool_).itemsize
 
@@ -485,10 +485,12 @@ class TSPProblem(problem.Problem):
         # Precalcular todos los números aleatorios
         rand_matrix = rng.random((colony_size, self.n_cities - 1))
 
+        pheromones_np = pheromones.get()
+
         utils.construct_solutions_tsp_inner(
             solutions,
             visited,
-            pheromones,
+            pheromones_np,
             self.heuristic_matrix,
             rand_matrix,
             colony_size,

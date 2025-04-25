@@ -59,6 +59,7 @@ class ACO(Algoritm):
         else:
             frequency = self.print_freq
 
+        fitness_values = np.empty(self.colony_size, dtype=np.float32)
         colony = self.problem.generate_solution(self.colony_size)
 
         while iteration < self.iterations and time() - time_start < self.timelimit:
@@ -67,9 +68,13 @@ class ACO(Algoritm):
             if best is not None:
                 # Se reinicializan las soluciones de la colonia con la mejor solución encontrada.
                 colony[0] = best
-
-            # Se evalúan las soluciones generadas.
-            fitness_values = self.executer.execute(colony)
+                fitness_values[0] = best_fit
+                # Se evalúan las soluciones generadas.
+                fitness_values[1:] = self.executer.execute(colony[1:])
+            else:
+                # Se evalúan las soluciones generadas.
+                fitness_values = self.executer.execute(colony)
+            
             # Se selecciona la mejor solución de la colonia.
             best_iteration_idx = np.argmax(fitness_values)
             best_iteration_fit = fitness_values[best_iteration_idx]
