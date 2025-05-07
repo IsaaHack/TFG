@@ -108,7 +108,7 @@ def main():
         print("Using Genetic Algorithm...")
         algoritm = GA(problem, population_size=1024, generations=100, seed=42, executer_type='gpu', mutation_rate=0.2)
     else:
-        algoritm = ACO(problem, colony_size=1024*16, iterations=100, seed=42, executer_type='multi', alpha=1.3, beta=3.0, evaporation_rate=0.5)
+        algoritm = ACO(problem, colony_size=1024, iterations=100000, seed=42, executer_type='multi', alpha=1.5, beta=3.0, evaporation_rate=0.01)
 
     print("Starting Algorithm...")
     start = time()

@@ -7,47 +7,55 @@ import numpy as np
 _raw_kernel_code = r"""
 extern "C" __global__ void construct_kernels(
     const int nCities,
+    const int colony_size,
     const float* distances,
-    const float* pheromonesAlpha,
-    const float* heuristicMatrix,
+    const float* probabilities,
     const float* randArr,
-    int* solutions)
+    int* solutions,
+    bool* visited_global)
 {
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
-    if (idx >= gridDim.x * blockDim.x) return;
+    if (idx >= colony_size) return;
 
-    extern __shared__ bool visited[];
-    bool* v = visited + threadIdx.x * nCities;
-    for (int i = 0; i < nCities; ++i) v[i] = false;
-
+    bool* visited = visited_global + idx * nCities;
+    
+    // Inicializar visited a falso
+    for(int i = 0; i < nCities; ++i) visited[i] = false;
+    
+    // Seleccionar primera ciudad
     int first = (int)(randArr[idx * nCities] * nCities);
     solutions[idx * nCities] = first;
-    v[first] = true;
+    visited[first] = true;
 
-    for (int step = 1; step < nCities; ++step) {
+    for(int step = 1; step < nCities; ++step) {
         int prev = solutions[idx * nCities + step - 1];
-        float sumProb = 0.0;
-        for (int j = 0; j < nCities; ++j) {
-            if (!v[j]) {
-                sumProb += pheromonesAlpha[prev * nCities + j] *
-                           heuristicMatrix[prev * nCities + j];
+        float sumProb = 0.0f;
+        
+        // Calcular suma de probabilidades
+        for(int j = 0; j < nCities; ++j) {
+            if(!visited[j]) {
+                sumProb += probabilities[prev * nCities + j];
             }
         }
+        
+        // Seleccionar ciudad
         float threshold = randArr[idx * nCities + step] * sumProb;
-        float cumulative = 0.0;
-        int nextCity = 0;
-        for (int j = 0; j < nCities; ++j) {
-            if (!v[j]) {
-                cumulative += pheromonesAlpha[prev * nCities + j] *
-                              heuristicMatrix[prev * nCities + j];
-                if (cumulative >= threshold) {
+        float cumulative = 0.0f;
+        int nextCity = -1;
+        
+        for(int j = 0; j < nCities; ++j) {
+            if(!visited[j]) {
+                cumulative += probabilities[prev * nCities + j];
+                if(cumulative >= threshold) {
                     nextCity = j;
                     break;
                 }
             }
         }
+        
+        // Actualizar solución y visited
         solutions[idx * nCities + step] = nextCity;
-        v[nextCity] = true;
+        visited[nextCity] = true;
     }
 }
 """
@@ -254,8 +262,7 @@ class TSPProblem(problem.Problem):
         # population[i][start:end+1] = temp
 
     def initialize_pheromones(self):
-        pheromones = cp.ones((self.n_cities, self.n_cities), dtype=cp.float32)
-        pheromones /= self.n_cities
+        pheromones = cp.random.uniform(1/(self.n_cities*self.n_cities), 1/self.n_cities, (self.n_cities, self.n_cities), dtype=cp.float32)
         cp.fill_diagonal(pheromones, 0.0)  # Evitar feromonas en la diagonal
         return pheromones
     
@@ -429,35 +436,40 @@ class TSPProblem(problem.Problem):
                                 1.0 / self.distances_gpu,
                                 cp.finfo(cp.float32).max)
             self.heuristic_matrix = cp.power(inv_dist, beta, dtype=cp.float32)
+            self.heuristic_matrix = cp.ascontiguousarray(self.heuristic_matrix)
             self.heuristic_beta = beta
+
+        probabilites = cp.multiply(pheromones_alpha, self.heuristic_matrix)
 
         # random thresholds
         rand = cp.random.random((colony_size, n), dtype=cp.float32)
 
+        # Crear buffer global para visited
+        visited_global = cp.zeros((colony_size, n), dtype=cp.bool_)
+
         threads = 32
         blocks = (colony_size + threads - 1) // threads
-        shared_mem = threads * n * cp.dtype(cp.bool_).itemsize
+        #shared_mem = threads * n * cp.dtype(cp.bool_).itemsize
 
         # Launch global kernel
         constructor_kernel_tsp(
             (blocks,), (threads,),
             (
                 n,
+                colony_size,
                 self.distances_gpu.ravel(),
-                pheromones_alpha.ravel(),
-                self.heuristic_matrix.ravel(),
+                probabilites.ravel(),
                 rand.ravel(),
                 gpu_solutions.ravel(),
+                visited_global.ravel()
             ),
-            shared_mem=shared_mem
         )
 
         # transfer results back to CPU numpy array
-        result = cp.asnumpy(gpu_solutions)
         if out is not None:
-            out[:] = result
+            cp.asnumpy(gpu_solutions, out=out)
             return out
-        return result
+        return cp.asnumpy(gpu_solutions)
     
     def construct_solutions777(self, colony_size, pheromones, alpha, beta, out=None):
         rng = np.random.default_rng(seed=np.random.randint(0, 2**32 - 1))
@@ -530,7 +542,6 @@ class TSPProblem(problem.Problem):
         )
     
     def reset_pheromones(self, pheromones):
-        pheromones *= 0
-        pheromones += 1 / self.n_cities
+        pheromones = cp.random.uniform(1/(self.n_cities*self.n_cities), 1/self.n_cities, (self.n_cities, self.n_cities), dtype=cp.float32)
         cp.fill_diagonal(pheromones, 0.0)
         return pheromones

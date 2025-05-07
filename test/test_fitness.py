@@ -43,20 +43,20 @@ def experiment(problem, weights, N):
     print("-----------------------------------------------------------")
 
     # Fitness Hybrid
-    def hybrid_function():
-        return problem.fitness_hybrid(weights)
-    hybrid_times = timeit.repeat(hybrid_function, number=1, repeat=N)
-    print("Fitness Hybrid:", problem.fitness_hybrid(weights)[0][0])    
-    print(f"Time (Hybrid): {np.mean(hybrid_times):.6f}s ± {np.std(hybrid_times):.6f}s")
-    print("-----------------------------------------------------------")
+    # def hybrid_function():
+    #     return problem.fitness_hybrid(weights)
+    # hybrid_times = timeit.repeat(hybrid_function, number=1, repeat=N)
+    # print("Fitness Hybrid:", problem.fitness_hybrid(weights)[0][0])    
+    # print(f"Time (Hybrid): {np.mean(hybrid_times):.6f}s ± {np.std(hybrid_times):.6f}s")
+    # print("-----------------------------------------------------------")
 
     # Speedups
     cpu_speedup = np.mean(cpu_times) / np.mean(omp_times)
     gpu_speedup = np.mean(cpu_times) / np.mean(gpu_times)
-    hybrid_speedup = np.mean(cpu_times) / np.mean(hybrid_times)
+    #hybrid_speedup = np.mean(cpu_times) / np.mean(hybrid_times)
     print(f"Speedup CPU vs OpenMP: {cpu_speedup:.2f}x")
     print(f"Speedup CPU vs GPU: {gpu_speedup:.2f}x")
-    print(f"Speedup CPU vs Hybrid: {hybrid_speedup:.2f}x")
+    #print(f"Speedup CPU vs Hybrid: {hybrid_speedup:.2f}x")
     print("-----------------------------------------------------------")
     
 
@@ -120,7 +120,7 @@ def tsp_optimal_solution(dist_matrix):
     return best_path, best_cost
 
 # Definir número de ciudades
-num_cities = 100  # Cambia el número de ciudades aquí
+num_cities = 10000  # Cambia el número de ciudades aquí
 dist_matrix = generate_distance_matrix(num_cities)
 problem = TSPProblem(dist_matrix)
 
