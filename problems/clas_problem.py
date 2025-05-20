@@ -1,5 +1,5 @@
 import problems.problem as problem
-import utils, utils_gpu
+from . import utils, utils_gpu
 import cupy as cp
 import numpy as np
 

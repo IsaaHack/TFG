@@ -171,7 +171,7 @@ print("---------------------------GA-------------------------------")
 print("X_train shape:", X_train.shape)
 print("y_train shape:", y_train.shape)
 
-from algoritms.ga import GA
+from algorithms.ga import GA
 
 problem = ClasProblem(X_train, y_train)
 problem2 = TSPProblem(dist_matrix)

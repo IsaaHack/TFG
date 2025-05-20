@@ -17,23 +17,19 @@ PYTHON_VERSION := $(shell $(PYTHON_CMD) --version 2>&1 | cut -d ' ' -f 2 | cut -
 PYTHON_INCLUDES := $(shell $(PYTHON_CMD) -m pybind11 --includes)
 PYTHON_SUFFIX := $(shell python$(PYTHON_VERSION)-config --extension-suffix)
 
-all: utils$(PYTHON_SUFFIX) utils_gpu$(PYTHON_SUFFIX)
+all: ./problems/utils_gpu$(PYTHON_SUFFIX)
 
 check-python:
 	@echo "Versión de Python detectada: $(PYTHON_VERSION)"
 
-utils$(PYTHON_SUFFIX): utils.cpp
-	@echo "Building C++ files"
-	$(PYTHON_CMD) setup.py build_ext --inplace
-
-utils_gpu$(PYTHON_SUFFIX): utils_gpu.cu
+./problems/utils_gpu$(PYTHON_SUFFIX): ./cpp/utils_gpu.cu
 	@echo "Building CUDA file"
 	nvcc -O3 -shared -std=c++14 --compiler-options -fPIC --extended-lambda \
 	$(PYTHON_INCLUDES) \
-	utils_gpu.cu -o "utils_gpu$(PYTHON_SUFFIX)" \
+	./cpp/utils_gpu.cu -o "./problems/utils_gpu$(PYTHON_SUFFIX)" \
 	-lcudart -L/usr/local/cuda/lib64 -lcublas -Xcompiler "-fPIC -fopenmp -O3 -march=native"
 
 clean:
 	$(PYTHON_CMD) setup.py clean
-	rm -f *.so
+	rm -f ./problems/*.so
 	rm -rf ./build

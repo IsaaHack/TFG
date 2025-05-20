@@ -1,8 +1,8 @@
 import os
 import argparse
 import numpy as np
-from algoritms.aco import ACO
-from algoritms.ga import GA
+from algorithms.aco import ACO
+from algorithms.ga import GA
 from time import time
 from problems.tsp_problem import TSPProblem
 
@@ -106,9 +106,9 @@ def main():
     problem = TSPProblem(dist_matrix_np)
     if args.algorithm == 'ga':
         print("Using Genetic Algorithm...")
-        algoritm = GA(problem, population_size=1024, generations=100, seed=42, executer_type='gpu', mutation_rate=0.2)
+        algoritm = GA(problem, population_size=1024, generations=100000, seed=42, executer_type='gpu', mutation_rate=0.12, crossover_rate=0.85, tournament_size=6)
     else:
-        algoritm = ACO(problem, colony_size=1024, iterations=100000, seed=42, executer_type='multi', alpha=1.5, beta=3.0, evaporation_rate=0.01)
+        algoritm = ACO(problem, colony_size=1024, iterations=10000, seed=42, executer_type='gpu', alpha=1.2, beta=4.0, evaporation_rate=0.01)
 
     print("Starting Algorithm...")
     start = time()
@@ -118,7 +118,7 @@ def main():
     fit = problem.fitness(path)
     print("Fitness:", -fit)
 
-    #print("Path:", path)
+    print("Path:", path)
 
     #Verify path
     print("Verifying path...")

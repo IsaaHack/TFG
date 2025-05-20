@@ -1,13 +1,13 @@
-from algoritms.algoritm import Algoritm
+from algorithms.algorithm import Algorithm
 import numpy as np
 from time import time
 import cupy as cp
 
-class ACO(Algoritm):
-    def __init__(self, problem, colony_size=50, evaporation_rate=0.1, iterations=100, alpha=1.0, beta=2.0, seed=None,reset_threshold=100, executer_type='single', executer=None, timelimit=np.inf, print_freq=None):
+class ACO(Algorithm):
+    def __init__(self, problem, colony_size=50, evaporation_rate=0.1, iterations=100, alpha=1.0, beta=2.0, seed=None,reset_threshold=100, executer_type='single', executer=None, timelimit=np.inf):
         # Se definen los métodos requeridos que el problema debe implementar.
         required_methods = ['fitness', 'initialize_pheromones', 'construct_solutions', 'update_pheromones', 'reset_pheromones']
-        super().__init__(problem, required_methods, executer_type, executer)
+        super().__init__(problem, iterations, required_methods, executer_type, executer, timelimit)
         
         self.colony_size = colony_size
         self.evaporation_rate = evaporation_rate
@@ -17,7 +17,6 @@ class ACO(Algoritm):
         self.seed = seed
         self.reset_threshold = reset_threshold
         self.timelimit = timelimit
-        self.print_freq = print_freq
 
         if iterations == np.inf and timelimit == np.inf:
             raise ValueError("Either iterations or timelimit must be set to a finite value.")
@@ -31,8 +30,6 @@ class ACO(Algoritm):
             raise ValueError("Beta must be greater than 0.")
         if reset_threshold <= 0:
             raise ValueError("Reset threshold must be greater than 0.")
-        if print_freq is not None and print_freq <= 0:
-            raise ValueError("Print frequency must be greater than 0.")
         if iterations <= 0:
             raise ValueError("Iterations must be greater than 0.")
 
@@ -50,14 +47,8 @@ class ACO(Algoritm):
 
         iteration = 0
         no_improvement = 0
-        gap = 0.1
-
-        if self.iterations != np.inf and self.print_freq is None:
-            frequency = self.iterations * gap
-        elif self.print_freq is None:
-            frequency = 1000
-        else:
-            frequency = self.print_freq
+        
+        self.print_init(time_start)
 
         fitness_values = np.empty(self.colony_size, dtype=np.float32)
         colony = self.problem.generate_solution(self.colony_size)
@@ -99,10 +90,8 @@ class ACO(Algoritm):
                 no_improvement = 0
 
             iteration += 1
+            self.print_update(best_fit, 1)
 
-            if self.iterations != np.inf:
-                self.print_iter(iteration, self.iterations, best_fit, frequency)
-            else:
-                self.print_time(iteration, self.iterations, time_start, self.timelimit, best_fit, frequency)
+        self.print_end()
 
         return np.copy(best)

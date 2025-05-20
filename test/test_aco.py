@@ -5,7 +5,7 @@ from sklearn.datasets import load_digits
 import numpy as np
 from scipy.spatial.distance import cdist
 import itertools
-from algoritms.aco import ACO
+from algorithms.aco import ACO
 
 np.random.seed(42)  # Para reproducibilidad
 

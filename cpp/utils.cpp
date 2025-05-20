@@ -329,45 +329,44 @@ py::array_t<int> crossover_tsp(
         int parent1 = 2 * k;
         int parent2 = parent1 + 1;
 
-        // Obtener los índices del segmento (ya ordenados)
         int start = starts_ptr[k];
         int end   = ends_ptr[k];
-        if (start < 0 || end >= n_cities || start > end)
-            throw std::runtime_error("Índices de segmento inválidos.");
+        if (start < 1 || end >= n_cities || start > end)
+            throw std::runtime_error("Índices de segmento inválidos o tocan la posición 0");
 
-        // Vectores temporales para los hijos
-        vector<int> child1(n_cities, -1);
-        vector<int> child2(n_cities, -1);
+        // Vectores temporales para los hijos, inicializados con -1
+        std::vector<int> child1(n_cities, -1);
+        std::vector<int> child2(n_cities, -1);
 
-        // --- Copiar el segmento seleccionado ---
+        // --- Fijar la posición 0 a ciudad 0 ---
+        child1[0] = 0;
+        child2[0] = 0;
+
+        // --- Copiar el segmento seleccionado para posiciones >=1 ---
         for (int i = start; i <= end; ++i) {
             child1[i] = pop_ptr[parent1 * n_cities + i];
             child2[i] = pop_ptr[parent2 * n_cities + i];
         }
 
         // --- Calcular los índices restantes (orden circular) ---
-        vector<int> rem;
-        // Desde end+1 hasta el final
-        for (int i = end + 1; i < n_cities; ++i)
-            rem.push_back(i);
-        // Desde 0 hasta start-1
-        for (int i = 0; i < start; ++i)
-            rem.push_back(i);
+        std::vector<int> rem;
+        for (int i = end + 1; i < n_cities; ++i) rem.push_back(i);
+        for (int i = 1; i < start; ++i) rem.push_back(i);
 
         // --- Rellenar child1 ---
-        // Marcar genes presentes en el segmento de child1 (tomados del padre1)
-        vector<bool> used(n_cities, false);
+        std::vector<bool> used(n_cities, false);
+        // Marcar genes presentes en el segmento de child1
         for (int i = start; i <= end; ++i) {
             int gene = child1[i];
             if (gene >= 0 && gene < n_cities)
                 used[gene] = true;
         }
         int pos = 0;
-        // Iterar en el orden en que aparecen en parent2
         for (int j = 0; j < n_cities && pos < int(rem.size()); ++j) {
             int gene = pop_ptr[parent2 * n_cities + j];
-            if (!used[gene]) {
+            if (!used[gene] && gene != 0) {
                 child1[rem[pos]] = gene;
+                used[gene] = true;
                 pos++;
             }
         }
@@ -380,11 +379,11 @@ py::array_t<int> crossover_tsp(
                 used[gene] = true;
         }
         pos = 0;
-        // Iterar en el orden en que aparecen en parent1
         for (int j = 0; j < n_cities && pos < int(rem.size()); ++j) {
             int gene = pop_ptr[parent1 * n_cities + j];
-            if (!used[gene]) {
+            if (!used[gene] && gene != 0) {
                 child2[rem[pos]] = gene;
+                used[gene] = true;
                 pos++;
             }
         }
@@ -394,7 +393,7 @@ py::array_t<int> crossover_tsp(
             pop_ptr[parent1 * n_cities + j] = child1[j];
             pop_ptr[parent2 * n_cities + j] = child2[j];
         }
-    } // fin de for paralelo
+    }
 
     return population;
 }

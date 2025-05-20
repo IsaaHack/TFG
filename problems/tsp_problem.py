@@ -1,5 +1,5 @@
 import problems.problem as problem
-import utils, utils_gpu
+from . import utils, utils_gpu
 import cupy as cp
 import numpy as np
 
@@ -23,7 +23,8 @@ extern "C" __global__ void construct_kernels(
     for(int i = 0; i < nCities; ++i) visited[i] = false;
     
     // Seleccionar primera ciudad
-    int first = (int)(randArr[idx * nCities] * nCities);
+    //int first = (int)(randArr[idx * nCities] * nCities);
+    int first = 0;
     solutions[idx * nCities] = first;
     visited[first] = true;
 
@@ -74,11 +75,16 @@ class TSPProblem(problem.Problem):
 
     def generate_solution(self, num_samples=1):
         if num_samples == 1:
-            return np.random.permutation(self.n_cities).astype(np.int32)
+            # Fijar la ciudad 0 como punto de inicio
+            rest = np.random.permutation(np.arange(1, self.n_cities)).astype(np.int32)
+            return np.concatenate(([0], rest))
         else:
-            base_perm = np.tile(np.arange(self.n_cities), (num_samples, 1)).astype(np.int32)
-            np.apply_along_axis(np.random.shuffle, 1, base_perm)
-            return base_perm
+            # Generar múltiples permutaciones con ciudad 0 fija al inicio
+            solutions = np.zeros((num_samples, self.n_cities), dtype=np.int32)
+            for i in range(num_samples):
+                rest = np.random.permutation(np.arange(1, self.n_cities)).astype(np.int32)
+                solutions[i] = np.concatenate(([0], rest))
+            return solutions
 
     def fitness(self, solutions):
         if len(solutions.shape) == 1:
@@ -161,8 +167,8 @@ class TSPProblem(problem.Problem):
         num_crossovers = int(np.floor(crossover_rate * len(population) / 2))
         rng = np.random.default_rng(seed=np.random.randint(0, 2**32 - 1))
 
-        # Generación vectorizada de puntos de inicio y fin (sin duplicados ni sorting)
-        start = rng.integers(0, self.n_cities - 1, size=num_crossovers)
+        # Asegurar que start >= 1 para no modificar la ciudad 0
+        start = rng.integers(1, self.n_cities - 1, size=num_crossovers)
         remaining = self.n_cities - start - 1
         end = start + 1 + rng.integers(0, remaining, size=num_crossovers)
 
@@ -238,10 +244,10 @@ class TSPProblem(problem.Problem):
         
         # Genera índices aleatorios para swap mutation:
         # Se utiliza np.random.randint para generar el primer índice.
-        indices1 = np.random.randint(0, self.n_cities, size=estimated_mutations)
+        indices1 = np.random.randint(1, self.n_cities, size=estimated_mutations)
         # Para el segundo índice, se generan números entre 0 y n_cities-2. 
         # Luego, si el índice generado es mayor o igual que el índice 1 correspondiente, se le suma 1 para evitar la repetición.
-        indices2 = np.random.randint(0, self.n_cities - 1, size=estimated_mutations)
+        indices2 = np.random.randint(1, self.n_cities - 1, size=estimated_mutations)
         indices2 = np.where(indices2 >= indices1, indices2 + 1, indices2)
 
         # Realiza el intercambio vectorizado
