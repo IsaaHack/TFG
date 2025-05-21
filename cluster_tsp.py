@@ -20,7 +20,7 @@ def main():
         filename="worker.py",
         nodes=["localhost", "localhost"],
         problem_import="problems.tsp_problem.TSPProblem",
-        algorithm_import="algoritms.ga.GA",
+        algorithm_import="algorithms.ga.GA",
         problem_args={
             "distances": dist_matrix.tolist()
         },

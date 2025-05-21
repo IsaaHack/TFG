@@ -3,7 +3,7 @@ from problems.clas_problem import ClasProblem
 import time
 from sklearn.datasets import load_digits
 import timeit
-import utils_gpu
+from problems import utils_gpu
 from time import sleep
 
 np.random.seed(42)  # Para reproducibilidad

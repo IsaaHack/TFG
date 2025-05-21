@@ -54,7 +54,7 @@ extern "C" __global__ void construct_kernels(
             }
         }
         
-        // Actualizar solución y visited
+        // Actualizar solucion y visited
         solutions[idx * nCities + step] = nextCity;
         visited[nextCity] = true;
     }
