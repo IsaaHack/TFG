@@ -1,10 +1,10 @@
-from algorithms.algorithm import Algorithm
+from . import Algorithm
 import numpy as np
 from time import time
 import cupy as cp
 
 class GA(Algorithm):
-    def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, generations=100, seed=None, tournament_size=3, executer_type='hybrid', executer=None, timelimit=np.inf):
+    def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, generations=100, seed=None, tournament_size=3, reset_threshold=100, executer_type='single', executer=None, timelimit=np.inf):
         required_methods = ['fitness', 'generate_solution', 'mutation', 'crossover']
 
         super().__init__(problem, generations, required_methods, executer_type, executer, timelimit)
@@ -15,6 +15,7 @@ class GA(Algorithm):
         self.generations = generations
         self.seed = seed
         self.tournament_size = tournament_size
+        self.reset_threshold = reset_threshold
 
         if generations == np.inf and timelimit == np.inf:
             raise ValueError("Either generations or timelimit must be set to a finite value.")
@@ -54,19 +55,20 @@ class GA(Algorithm):
     def fit(self):
         time_start = time()
 
-        if self.seed is not None:
-            np.random.seed(self.seed)
-            cp.random.seed(self.seed)
+        self.init_seed(self.seed)
 
         self.print_init(time_start)
 
         population = self.initialize_population()
         fitness_values = self.executer.execute(population)
         actual_generation = 1
+
         best = np.copy(population[np.argmax(fitness_values)])
         best_fit = fitness_values[np.argmax(fitness_values)]
-        self.print_update(best_fit)
+
         no_improvement = 0
+
+        self.print_update(best_fit)
 
         while actual_generation < self.generations and time() - time_start < self.timelimit:
             # Selection
@@ -79,7 +81,7 @@ class GA(Algorithm):
             # Evaluate fitness
             fitness_values = self.executer.execute(new_population)
 
-            # Replace the worst individuals with the best from the previous generation(Elitism)
+            # Elitism
             best_new_index = np.argmax(fitness_values)
             worst_new_index = np.argmin(fitness_values)
 
@@ -95,8 +97,8 @@ class GA(Algorithm):
                 fitness_values[worst_new_index] = best_fit
                 no_improvement += 1
 
-            if no_improvement >= 100:
-                #print("Resetting population due to no improvement.")
+            # Reset if there is not improvement
+            if no_improvement >= self.reset_threshold:
                 population, fitness_values = self.reset_population(best, best_fit)
                 best_fit = np.argmax(fitness_values)
                 best = np.copy(population[best_fit])

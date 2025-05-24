@@ -1,10 +1,10 @@
 import numpy as np
-from problems.clas_problem import ClasProblem
+from problems import ClasProblem
 import time
 from sklearn.datasets import load_digits
 import timeit
-import utils_gpu
-from problems.tsp_problem import TSPProblem
+from problems import utils_gpu
+from problems import TSPProblem
 from scipy.spatial.distance import cdist
 import itertools
 
@@ -120,7 +120,7 @@ def tsp_optimal_solution(dist_matrix):
     return best_path, best_cost
 
 # Definir número de ciudades
-num_cities = 10000  # Cambia el número de ciudades aquí
+num_cities = 20000
 dist_matrix = generate_distance_matrix(num_cities)
 problem = TSPProblem(dist_matrix)
 

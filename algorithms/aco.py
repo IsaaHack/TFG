@@ -1,4 +1,4 @@
-from algorithms.algorithm import Algorithm
+from . import Algorithm
 import numpy as np
 from time import time
 import cupy as cp
@@ -36,9 +36,7 @@ class ACO(Algorithm):
     def fit(self):
         time_start = time()
 
-        if self.seed is not None:
-            np.random.seed(self.seed)
-            cp.random.seed(self.seed)
+        self.init_seed(self.seed)
 
         # Inicializa las feromonas del problema.
         pheromones = self.problem.initialize_pheromones()

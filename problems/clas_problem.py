@@ -6,6 +6,7 @@ import numpy as np
 SQRT_03 = np.sqrt(0.3)
 MIN_STD = 1e-3
 MAX_STD = 0.25
+MAX_V = np.sqrt(0.5)
 
 class ClasProblem(problem.Problem):
     def __init__(self, X, Y, threshold=0.1, alpha=0.25):
@@ -232,5 +233,41 @@ class ClasProblem(problem.Problem):
     def reset_pheromones(self, pheromones):
         pheromones = self.initialize_pheromones()
         return pheromones
+    
+    def generate_velocity(self, num_samples=1):
+        if num_samples == 1:
+            return np.random.uniform(-1, 1, size=(self.n_features)).astype(np.float32)
+        else:
+            return np.random.uniform(-1, 1, size=(num_samples, self.n_features)).astype(np.float32)
+        
+    def update_velocity(self, population, velocity, p_best, g_best, inertia_weight, cognitive_weight, social_weight):
+        # Calcular la velocidad usando la fórmula de PSO
+        r1 = np.random.rand(*population.shape).astype(np.float32)
+        r2 = np.random.rand(*population.shape).astype(np.float32)
+
+        cognitive_component = cognitive_weight * r1 * (p_best - population)
+        social_component = social_weight * r2 * (g_best - population)
+
+        new_velocity = inertia_weight * velocity + cognitive_component + social_component
+
+        new_velocity = np.clip(new_velocity, -MAX_V, MAX_V)
+
+        #print("Mean velocity:", np.mean(np.abs(new_velocity)))
+
+        return new_velocity
+    
+    def update_position(self, population, velocity):
+        # Actualizar la posición de la población
+        population += velocity
+
+        # Aplicar rebote si la posición está fuera de los límites
+        mask = (population < 0) | (population > 1)
+        velocity[mask] *= -0.5
+
+        population[mask] += velocity[mask]
+
+        # Asegurarse de que los valores estén dentro del rango [0, 1]
+        population = np.clip(population, 0, 1)
+        return population
     
 

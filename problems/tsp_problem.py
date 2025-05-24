@@ -2,6 +2,7 @@ import problems.problem as problem
 from . import utils, utils_gpu
 import cupy as cp
 import numpy as np
+import numba
 
 # Raw kernel source
 _raw_kernel_code = r"""
@@ -254,6 +255,9 @@ class TSPProblem(problem.Problem):
         temp = population[individual_indices, indices1].copy()
         population[individual_indices, indices1] = population[individual_indices, indices2]
         population[individual_indices, indices2] = temp
+
+        # for i in range(population.shape[0]):
+        #     population[i] = self.two_opt(population[i], self.distances)
         
         # Swap mutation
         # population[i][index1] = np.random.randint(self.n_cities)
@@ -474,6 +478,8 @@ class TSPProblem(problem.Problem):
         # transfer results back to CPU numpy array
         if out is not None:
             cp.asnumpy(gpu_solutions, out=out)
+            # for i in range(colony_size):
+            #     out[i] = self.two_opt(out[i],self.distances)
             return out
         return cp.asnumpy(gpu_solutions)
     
@@ -551,3 +557,97 @@ class TSPProblem(problem.Problem):
         pheromones = cp.random.uniform(1/(self.n_cities*self.n_cities), 1/self.n_cities, (self.n_cities, self.n_cities), dtype=cp.float32)
         cp.fill_diagonal(pheromones, 0.0)
         return pheromones
+    
+    def generate_velocity(self, num_samples=1):
+        # Genera intercambios aleatorios iniciales basados en la longitud del tour
+        n = self.n_cities
+        velocities = []
+        max_swaps = max(2, int(n**0.5))  # Límite basado en sqrt(n)
+        for _ in range(num_samples):
+            num_swaps = np.random.randint(1, max_swaps)
+            swaps = []
+            for _ in range(num_swaps):
+                i, j = np.random.choice(n, 2, replace=False)
+                swaps.append((i, j))
+            velocities.append(swaps)
+        return velocities
+    
+    @staticmethod
+    @numba.njit(nogil=True, cache=True)
+    def _get_swap_sequence(from_tour, to_tour):
+        seq = []
+        ft = from_tour.copy()
+        position_map = {city: idx for idx, city in enumerate(ft)}
+        for idx in range(len(ft)):
+            target_city = to_tour[idx]
+            if ft[idx] == target_city:
+                continue
+            swap_idx = position_map[target_city]
+            seq.append((idx, swap_idx))
+            # Actualiza el mapa de posiciones
+            position_map[ft[swap_idx]] = idx
+            position_map[ft[idx]] = swap_idx
+            # Realiza el intercambio
+            ft[idx], ft[swap_idx] = ft[swap_idx], ft[idx]
+        return seq
+
+    def update_velocity(self, swarm, velocity, p_best, g_best, inertia_weight, cognitive_weight, social_weight):
+        new_velocity = []
+
+        max_swaps = max(2, int(self.n_cities**0.5))  # Límite basado en sqrt(n)
+        for i, tour in enumerate(swarm):
+            # Componente de inercia: parte de la velocidad anterior
+            inertia_count = int(inertia_weight * len(velocity[i]))
+            vel_inertia = velocity[i][:inertia_count]  # Tomar primeros 'inertia_count' intercambios
+            
+            # Componente cognitivo: intercambios hacia p_best[i]
+            swaps_cog = self._get_swap_sequence(tour, p_best[i])
+            k1 = int(cognitive_weight * len(swaps_cog))
+            #k1 = max(0, k1)  # Permitir 0 si cognitive_weight es 0
+            vel_cognitive = swaps_cog[:k1]
+            
+            # Componente social: intercambios hacia g_best
+            swaps_soc = self._get_swap_sequence(tour, g_best)
+            k2 = int(social_weight * len(swaps_soc))
+            #k2 = max(0, k2)  # Permitir 0 si social_weight es 0
+            vel_social = swaps_soc[:k2]
+            
+            # Combinar componentes
+            combined = vel_inertia + vel_cognitive + vel_social
+            combined = list(set(combined))  # Eliminar duplicados
+            #Hacer un suffle shuffle para mezclar los intercambios
+            np.random.shuffle(combined)
+            new_velocity.append(list(combined[:min(len(combined), max_swaps)]))
+            #new_velocity.append(combined[:min(len(combined), max_swaps)])
+            #new_velocity.append(combined)
+
+        return new_velocity
+    
+    @staticmethod
+    @numba.njit(nogil=True, cache=True)
+    def two_opt(tour, distances):
+        n = tour.size
+        for i in range(1, n - 2):
+            a = tour[i - 1]
+            b = tour[i]
+            for k in range(i + 1, n - 1):
+                c = tour[k]
+                d = tour[k + 1]
+                # calculate cost difference
+                delta = (distances[a, b] + distances[c, d]) - (distances[a, c] + distances[b, d])
+                if delta > 1e-6:
+                    # perform swap and exit
+                    #tour[i:k + 1] = tour[i:k + 1][::-1]
+                    tour[i:k + 1] = np.flip(tour[i:k + 1])
+                    return tour
+        return tour
+
+    def update_position(self, swarm, velocity):
+        # Aplica cada swap de la velocidad sobre el tour
+        for i, swaps in enumerate(velocity):
+            tour = swarm[i]
+            for a, b in swaps:
+                tour[a], tour[b] = tour[b], tour[a]
+            swarm[i] = self.two_opt(tour, self.distances)
+
+        return swarm

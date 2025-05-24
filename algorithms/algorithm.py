@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from executers.executer import SingleCoreExecuter, MultiCoreExecuter, GpuExecuter, HybridExecuter
+from executers import SingleCoreExecuter, MultiCoreExecuter, GpuExecuter, HybridExecuter
 from time import time
 import tqdm
 import numpy as np
+import cupy as cp
 
 GAP = 0.1
 
@@ -38,6 +39,11 @@ class Algorithm(ABC):
         self.required_methods = required_methods
         self.check_required_methods()
         self.progress_bar = None
+
+    def init_seed(self, seed):
+        self.seed = seed
+        np.random.seed(self.seed)
+        cp.random.seed(self.seed)
 
     def check_required_methods(self):
         for method in self.required_methods:
