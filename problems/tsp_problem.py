@@ -62,6 +62,27 @@ extern "C" __global__ void construct_kernels(
 }
 """
 
+kernel_code = """
+extern "C" __global__
+void swap_kernel(int *from_tour, int *to_tour, int *swap_sequence, int N, int *swap_count) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    
+    if (idx < N) {
+        int from_idx = from_tour[idx];
+        int to_idx = to_tour[idx];
+
+        if (from_idx != to_idx) {
+            int swap_position = atomicAdd(swap_count, 1);  // Incrementar contador de swaps de manera atómica
+            swap_sequence[swap_position] = idx;  // Guardar índice de intercambio
+        }
+    }
+}
+"""
+
+# Compilar el kernel
+module = cp.RawModule(code=kernel_code)
+swap_kernel = module.get_function('swap_kernel')
+
 # Compile kernel globally
 constructor_kernel_tsp = cp.RawKernel(_raw_kernel_code, 'construct_kernels')
 
@@ -603,19 +624,16 @@ class TSPProblem(problem.Problem):
             # Componente cognitivo: intercambios hacia p_best[i]
             swaps_cog = self._get_swap_sequence(tour, p_best[i])
             k1 = int(cognitive_weight * len(swaps_cog))
-            #k1 = max(0, k1)  # Permitir 0 si cognitive_weight es 0
             vel_cognitive = swaps_cog[:k1]
             
             # Componente social: intercambios hacia g_best
             swaps_soc = self._get_swap_sequence(tour, g_best)
             k2 = int(social_weight * len(swaps_soc))
-            #k2 = max(0, k2)  # Permitir 0 si social_weight es 0
             vel_social = swaps_soc[:k2]
             
             # Combinar componentes
             combined = vel_inertia + vel_cognitive + vel_social
             combined = list(set(combined))  # Eliminar duplicados
-            #Hacer un suffle shuffle para mezclar los intercambios
             np.random.shuffle(combined)
             new_velocity.append(list(combined[:min(len(combined), max_swaps)]))
             #new_velocity.append(combined[:min(len(combined), max_swaps)])
@@ -625,22 +643,27 @@ class TSPProblem(problem.Problem):
     
     @staticmethod
     @numba.njit(nogil=True, cache=True)
-    def two_opt(tour, distances):
-        n = tour.size
-        for i in range(1, n - 2):
-            a = tour[i - 1]
-            b = tour[i]
-            for k in range(i + 1, n - 1):
-                c = tour[k]
-                d = tour[k + 1]
-                # calculate cost difference
-                delta = (distances[a, b] + distances[c, d]) - (distances[a, c] + distances[b, d])
-                if delta > 1e-6:
-                    # perform swap and exit
-                    #tour[i:k + 1] = tour[i:k + 1][::-1]
-                    tour[i:k + 1] = np.flip(tour[i:k + 1])
-                    return tour
-        return tour
+    def two_opt(tours, distances):
+        for tour in tours:
+            n = tour.size
+            improved = False
+            for i in range(1, n - 2):
+                a = tour[i - 1]
+                b = tour[i]
+                for k in range(i + 1, n - 1):
+                    c = tour[k]
+                    d = tour[k + 1]
+                    # calculate cost difference
+                    delta = (distances[a, b] + distances[c, d]) - (distances[a, c] + distances[b, d])
+                    if delta > 1e-6:
+                        # perform swap and exit
+                        #tour[i:k + 1] = tour[i:k + 1][::-1]
+                        tour[i:k + 1] = np.flip(tour[i:k + 1])
+                        improved = True
+                        break
+                if improved:
+                    break
+        return tours
 
     def update_position(self, swarm, velocity):
         # Aplica cada swap de la velocidad sobre el tour
@@ -648,6 +671,6 @@ class TSPProblem(problem.Problem):
             tour = swarm[i]
             for a, b in swaps:
                 tour[a], tour[b] = tour[b], tour[a]
-            swarm[i] = self.two_opt(tour, self.distances)
+        swarm = utils.two_opt(swarm, self.distances)
 
         return swarm

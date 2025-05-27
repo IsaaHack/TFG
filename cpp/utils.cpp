@@ -590,6 +590,85 @@ void construct_solutions_tsp_inner(
     }
 }
 
+vector<pair<int, int>> get_swap_sequence(const vector<int>& from_tour,
+                                         const vector<int>& to_tour) {
+    vector<pair<int, int>> seq;
+    vector<int> ft = from_tour;
+    unordered_map<int, int> position_map;
+
+    for (size_t i = 0; i < ft.size(); ++i) {
+        position_map[ft[i]] = i;
+    }
+
+    for (size_t idx = 0; idx < ft.size(); ++idx) {
+        int target_city = to_tour[idx];
+        if (ft[idx] == target_city) {
+            continue;
+        }
+        int swap_idx = position_map[target_city];
+        seq.emplace_back(idx, swap_idx);
+
+        // Actualiza el mapa de posiciones
+        position_map[ft[swap_idx]] = idx;
+        position_map[ft[idx]] = swap_idx;
+
+        // Realiza el intercambio
+        swap(ft[idx], ft[swap_idx]);
+    }
+
+    return seq;
+}
+
+// Versión batch
+vector<vector<pair<int, int>>> get_swap_sequence_batch(const vector<vector<int>>& from_tours,
+                                                       const vector<vector<int>>& to_tours) {
+    size_t n = from_tours.size();
+    vector<vector<pair<int, int>>> batch(n);
+
+    #pragma omp parallel for shared(batch, from_tours, to_tours) schedule(dynamic)
+    for (size_t i = 0; i < n; ++i) {
+        batch[i] = get_swap_sequence(from_tours[i], to_tours[i]);
+    }
+    return batch;
+}
+
+void two_opt(vector<vector<int>>& tours, const vector<vector<float>>& distances) {
+    size_t n_tours = tours.size();
+
+    #pragma omp parallel for schedule(dynamic) shared(tours, distances)
+    for (int t = 0; t < static_cast<int>(n_tours); ++t) {
+        auto& tour = tours[t];
+        int n = tour.size();
+        bool improved = false;
+
+        for (int i = 1; i < n - 2; ++i) {
+            int a = tour[i - 1];
+            int b = tour[i];
+
+            for (int k = i + 1; k < n - 1; ++k) {
+                int c = tour[k];
+                int d = tour[k + 1];
+
+                double delta = (distances[a][b] + distances[c][d]) - (distances[a][c] + distances[b][d]);
+
+                if (delta > 1e-6) {
+                    // Realiza la inversión del segmento
+                    int start = i;
+                    int end = k+1;
+                    while (start < end) {
+                        swap(tour[start], tour[end]);
+                        start++;
+                        end--;
+                    }
+                    improved = true;
+                    break;
+                }
+            }
+            if (improved) break;
+        }
+    }
+}
+
 // Exponer las funciones a Python con pybind11
 PYBIND11_MODULE(utils, m) {
     m.doc() = "Módulo de utilidades CPP";
@@ -618,4 +697,10 @@ PYBIND11_MODULE(utils, m) {
             py::arg("solutions"), py::arg("visited"), py::arg("pheromones"),
             py::arg("heuristic_matrix"), py::arg("rand_matrix"), py::arg("colony_size"),
             py::arg("n_cities"), py::arg("alpha"), py::arg("epsilon"));
+    m.def("get_swap_sequence", &get_swap_sequence, "Obtiene la secuencia de swaps entre dos tours",
+            py::arg("from_tour"), py::arg("to_tour"));
+    m.def("get_swap_sequence_batch", &get_swap_sequence_batch, "Obtiene la secuencia de swaps para un batch de tours",
+            py::arg("from_tours"), py::arg("to_tours"));
+    m.def("two_opt", &two_opt, "Aplica el algoritmo 2-opt a un conjunto de tours",
+            py::arg("tours"), py::arg("distances"));
 }
