@@ -62,27 +62,6 @@ extern "C" __global__ void construct_kernels(
 }
 """
 
-kernel_code = """
-extern "C" __global__
-void swap_kernel(int *from_tour, int *to_tour, int *swap_sequence, int N, int *swap_count) {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    
-    if (idx < N) {
-        int from_idx = from_tour[idx];
-        int to_idx = to_tour[idx];
-
-        if (from_idx != to_idx) {
-            int swap_position = atomicAdd(swap_count, 1);  // Incrementar contador de swaps de manera atómica
-            swap_sequence[swap_position] = idx;  // Guardar índice de intercambio
-        }
-    }
-}
-"""
-
-# Compilar el kernel
-module = cp.RawModule(code=kernel_code)
-swap_kernel = module.get_function('swap_kernel')
-
 # Compile kernel globally
 constructor_kernel_tsp = cp.RawKernel(_raw_kernel_code, 'construct_kernels')
 
