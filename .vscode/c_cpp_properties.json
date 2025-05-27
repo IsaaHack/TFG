@@ -6,8 +6,8 @@
                 "${workspaceFolder}/**",
                 "/usr/include",
                 "/usr/local/include",
-                "/home/isaac/.local/lib/python3.*/site-packages/pybind11/include",
-                "/usr/include/python3.12"
+                "~/.local/lib/python3.*/site-packages/pybind11/include",
+                "/usr/include/python3.*"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++",
