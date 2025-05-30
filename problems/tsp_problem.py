@@ -61,28 +61,44 @@ extern "C" __global__ void construct_kernels(
 }
 """
 
-kernel_code = """
+two_opt_kernel_src = r'''
 extern "C" __global__
-void swap_kernel(int *from_tour, int *to_tour, int *swap_sequence, int N, int *swap_count) {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    
-    if (idx < N) {
-        int from_idx = from_tour[idx];
-        int to_idx = to_tour[idx];
+void two_opt_kernel(int* tours, float* distances,
+                    int num_tours, int n) {
+    int tour_id = blockIdx.x*blockDim.x + threadIdx.x;
+    if (tour_id >= num_tours) return;
 
-        if (from_idx != to_idx) {
-            int swap_position = atomicAdd(swap_count, 1);  // Incrementar contador de swaps de manera atómica
-            swap_sequence[swap_position] = idx;  // Guardar índice de intercambio
+    int* tour = tours + tour_id * n;
+    bool improved = false;
+
+    for(int i = 1; i < n - 2; ++i) {
+        int a = tour[i - 1];
+        int b = tour[i];
+
+        float dist_ab = distances[a * n + b];
+        for(int k = i + 1; k < n - 1; ++k) {
+            int c = tour[k];
+            int d = tour[k + 1];
+            float delta = (dist_ab + distances[c * n + d])
+                        - (distances[a * n + c] + distances[b * n + d]);
+            if (delta > 1e-6f) {
+                int left = i, right = k;
+                while (left < right) {
+                    int tmp       = tour[left];
+                    tour[left++]  = tour[right];
+                    tour[right--] = tmp;
+                }
+                improved = true;
+                break;
+            }
         }
+        if (improved) break;
     }
 }
-"""
+'''
 
-# Compilar el kernel
-module = cp.RawModule(code=kernel_code)
-swap_kernel = module.get_function('swap_kernel')
+two_opt_kernel = cp.RawKernel(two_opt_kernel_src, 'two_opt_kernel')
 
-# Compile kernel globally
 constructor_kernel_tsp = cp.RawKernel(_raw_kernel_code, 'construct_kernels')
 
 class TSPProblem(problem.Problem):
