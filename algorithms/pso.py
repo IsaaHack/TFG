@@ -29,12 +29,13 @@ class PSO(Algorithm):
         if iterations <= 0:
             raise ValueError("Iterations must be greater than 0.")
         
-    def fit(self):
+    def fit(self, verbose=True):
         time_start = time()
 
         self.init_seed(self.seed)
 
-        self.print_init(time_start)
+        if verbose:
+            self.print_init(time_start)
 
         # Inicializar el enjambre
         swarm = self.problem.generate_solution(self.swarm_size)

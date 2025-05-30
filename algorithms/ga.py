@@ -52,12 +52,13 @@ class GA(Algorithm):
 
         return new_population, fitness_values
     
-    def fit(self):
+    def fit(self, verbose=True):
         time_start = time()
 
         self.init_seed(self.seed)
 
-        self.print_init(time_start)
+        if verbose:
+            self.print_init(time_start)
 
         population = self.initialize_population()
         fitness_values = self.executer.execute(population)

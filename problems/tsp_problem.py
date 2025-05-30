@@ -2,7 +2,6 @@ import problems.problem as problem
 from . import utils, utils_gpu
 import cupy as cp
 import numpy as np
-import numba
 
 # Raw kernel source
 _raw_kernel_code = r"""
@@ -62,28 +61,44 @@ extern "C" __global__ void construct_kernels(
 }
 """
 
-kernel_code = """
+two_opt_kernel_src = r'''
 extern "C" __global__
-void swap_kernel(int *from_tour, int *to_tour, int *swap_sequence, int N, int *swap_count) {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    
-    if (idx < N) {
-        int from_idx = from_tour[idx];
-        int to_idx = to_tour[idx];
+void two_opt_kernel(int* tours, float* distances,
+                    int num_tours, int n) {
+    int tour_id = blockIdx.x*blockDim.x + threadIdx.x;
+    if (tour_id >= num_tours) return;
 
-        if (from_idx != to_idx) {
-            int swap_position = atomicAdd(swap_count, 1);  // Incrementar contador de swaps de manera atómica
-            swap_sequence[swap_position] = idx;  // Guardar índice de intercambio
+    int* tour = tours + tour_id * n;
+    bool improved = false;
+
+    for(int i = 1; i < n - 2; ++i) {
+        int a = tour[i - 1];
+        int b = tour[i];
+
+        float dist_ab = distances[a * n + b];
+        for(int k = i + 1; k < n - 1; ++k) {
+            int c = tour[k];
+            int d = tour[k + 1];
+            float delta = (dist_ab + distances[c * n + d])
+                        - (distances[a * n + c] + distances[b * n + d]);
+            if (delta > 1e-6f) {
+                int left = i, right = k;
+                while (left < right) {
+                    int tmp       = tour[left];
+                    tour[left++]  = tour[right];
+                    tour[right--] = tmp;
+                }
+                improved = true;
+                break;
+            }
         }
+        if (improved) break;
     }
 }
-"""
+'''
 
-# Compilar el kernel
-module = cp.RawModule(code=kernel_code)
-swap_kernel = module.get_function('swap_kernel')
+two_opt_kernel = cp.RawKernel(two_opt_kernel_src, 'two_opt_kernel')
 
-# Compile kernel globally
 constructor_kernel_tsp = cp.RawKernel(_raw_kernel_code, 'construct_kernels')
 
 class TSPProblem(problem.Problem):
@@ -594,7 +609,6 @@ class TSPProblem(problem.Problem):
         return velocities
     
     @staticmethod
-    @numba.njit(nogil=True, cache=True)
     def _get_swap_sequence(from_tour, to_tour):
         seq = []
         ft = from_tour.copy()
@@ -615,19 +629,19 @@ class TSPProblem(problem.Problem):
     def update_velocity(self, swarm, velocity, p_best, g_best, inertia_weight, cognitive_weight, social_weight):
         new_velocity = []
 
-        max_swaps = max(2, int(self.n_cities**0.5))  # Límite basado en sqrt(n)
+        max_swaps = np.maximum(2, int(self.n_cities**0.5))  # Límite basado en sqrt(n)
         for i, tour in enumerate(swarm):
             # Componente de inercia: parte de la velocidad anterior
             inertia_count = int(inertia_weight * len(velocity[i]))
             vel_inertia = velocity[i][:inertia_count]  # Tomar primeros 'inertia_count' intercambios
             
             # Componente cognitivo: intercambios hacia p_best[i]
-            swaps_cog = self._get_swap_sequence(tour, p_best[i])
+            swaps_cog = utils.get_swap_sequence(tour, p_best[i])
             k1 = int(cognitive_weight * len(swaps_cog))
             vel_cognitive = swaps_cog[:k1]
             
             # Componente social: intercambios hacia g_best
-            swaps_soc = self._get_swap_sequence(tour, g_best)
+            swaps_soc = utils.get_swap_sequence(tour, g_best)
             k2 = int(social_weight * len(swaps_soc))
             vel_social = swaps_soc[:k2]
             
@@ -635,14 +649,12 @@ class TSPProblem(problem.Problem):
             combined = vel_inertia + vel_cognitive + vel_social
             combined = list(set(combined))  # Eliminar duplicados
             np.random.shuffle(combined)
-            new_velocity.append(list(combined[:min(len(combined), max_swaps)]))
-            #new_velocity.append(combined[:min(len(combined), max_swaps)])
+            new_velocity.append(combined[:np.minimum(len(combined), max_swaps)])
             #new_velocity.append(combined)
 
         return new_velocity
     
     @staticmethod
-    @numba.njit(nogil=True, cache=True)
     def two_opt(tours, distances):
         for tour in tours:
             n = tour.size
@@ -658,12 +670,37 @@ class TSPProblem(problem.Problem):
                     if delta > 1e-6:
                         # perform swap and exit
                         #tour[i:k + 1] = tour[i:k + 1][::-1]
-                        tour[i:k + 1] = np.flip(tour[i:k + 1])
+                        #tour[i:k + 1] = np.flip(tour[i:k + 1])
+                        start = i
+                        end = k
+                        while start < end:
+                            tour[start], tour[end] = tour[end], tour[start]
+                            start += 1
+                            end -= 1
                         improved = True
                         break
                 if improved:
                     break
         return tours
+    
+    @staticmethod
+    def two_opt_gpu(tours, distances):
+        tours_gpu = cp.asarray(tours, dtype=cp.int32,   order='C')
+
+        num_tours, n = tours_gpu.shape
+
+        # Un bloque por tour, 1 hilo por bloque
+        threads = 256
+        blocks = (num_tours + threads - 1) // threads
+
+        # Itera el kernel hasta max_iters (o podrías parar temprano con _flags)
+        two_opt_kernel(
+            (blocks,), (threads,),
+            (tours_gpu, distances, num_tours, n)
+        )
+
+        # Trae el resultado de vuelta a CPU
+        return cp.asnumpy(tours_gpu, out=tours)
 
     def update_position(self, swarm, velocity):
         # Aplica cada swap de la velocidad sobre el tour
@@ -671,6 +708,8 @@ class TSPProblem(problem.Problem):
             tour = swarm[i]
             for a, b in swaps:
                 tour[a], tour[b] = tour[b], tour[a]
-        swarm = utils.two_opt(swarm, self.distances)
+        
+        swarm = self.two_opt_gpu(swarm, self.distances_gpu)
+        #utils.two_opt(swarm, self.distances)
 
         return swarm

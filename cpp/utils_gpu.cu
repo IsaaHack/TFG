@@ -512,9 +512,6 @@ float fitness_hybrid(
     auto y_train_info = y_train_np.request();
     auto fitness_values_info = fitness_values_np.request();
 
-    if (X_train_info.ndim != 2 || y_train_info.ndim != 1 || fitness_values_info.ndim != 1)
-        throw std::runtime_error("Formato de entrada inválido");
-
     auto weights_ptr = static_cast<float *>(weights_info.ptr);
     auto X_train_ptr = static_cast<float *>(X_train_info.ptr);
     auto y_train_ptr = static_cast<int *>(y_train_info.ptr);

@@ -33,7 +33,7 @@ class ACO(Algorithm):
         if iterations <= 0:
             raise ValueError("Iterations must be greater than 0.")
 
-    def fit(self):
+    def fit(self, verbose=True):
         time_start = time()
 
         self.init_seed(self.seed)
@@ -46,7 +46,8 @@ class ACO(Algorithm):
         iteration = 0
         no_improvement = 0
         
-        self.print_init(time_start)
+        if verbose:
+            self.print_init(time_start)
 
         fitness_values = np.empty(self.colony_size, dtype=np.float32)
         colony = self.problem.generate_solution(self.colony_size)

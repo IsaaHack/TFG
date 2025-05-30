@@ -115,7 +115,7 @@ def main():
 
     print("Starting Algorithm...")
     start = time()
-    path = algoritm.fit()
+    path = algoritm.fit(verbose=False)
     end = time()
     print("Time:", end - start)
     fit = problem.fitness(path)

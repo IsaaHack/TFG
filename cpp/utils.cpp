@@ -143,9 +143,6 @@ void fitness_omp(py::array_t<float> weights_np, py::array_t<float> X_train_np, p
     size_t d = X_train_info.shape[1];
     size_t n_sol = weights_info.shape[0];
 
-    if (X_train_info.ndim != 2 || y_train_info.ndim != 1 || fitness_values_info.ndim != 1)
-        throw std::runtime_error("Formato de entrada inválido");
-
     auto weights_ptr = static_cast<float *>(weights_info.ptr);
     auto X_train_ptr = static_cast<float *>(X_train_info.ptr);
     auto y_train_ptr = static_cast<int *>(y_train_info.ptr);
@@ -179,17 +176,10 @@ float fitness_tsp_cpp(const float* distances, const int* solution, int n) {
 float fitness_tsp(py::array_t<float> distances,
                    py::array_t<int> solution)
 {
-    // Verificar propiedades de los arrays
-    if (solution.ndim() != 1 || distances.ndim() != 2)
-        throw std::runtime_error("Formato de entrada inválido");
-
     py::buffer_info dist_info = distances.request();
     py::buffer_info sol_info = solution.request();
 
     const int n = sol_info.shape[0];
-
-    if (dist_info.shape[0] != n || dist_info.shape[1] != n)
-        throw std::runtime_error("Dimensiones incompatibles");
 
     // Obtener punteros a los datos
     const float *dist_ptr = static_cast<float *>(dist_info.ptr);
@@ -211,19 +201,12 @@ void fitness_tsp_omp_cpp(const float* distances, const int* solutions, float *fi
 void fitness_tsp_omp(py::array_t<float> distances,
     py::array_t<int> solutions, py::array_t<float> fitness_values)
 {
-    // Verificar propiedades de los arrays
-    if (solutions.ndim() != 2 || distances.ndim() != 2)
-    throw std::runtime_error("Formato de entrada inválido");
-
     py::buffer_info dist_info = distances.request();
     py::buffer_info sol_info = solutions.request();
     py::buffer_info fit_info = fitness_values.request();
 
     const int n_sol = sol_info.shape[0];
     const int n_cities = dist_info.shape[0];
-
-    if (dist_info.shape[0] != n_cities || dist_info.shape[1] != n_cities)
-        throw std::runtime_error("Dimensiones incompatibles");
 
     // Obtener punteros a los datos
     const float *dist_ptr = static_cast<float *>(dist_info.ptr);
@@ -247,14 +230,8 @@ void crossover_blx(
     auto rand1_info = rand_uniform1.request();
     auto rand2_info = rand_uniform2.request();
 
-    if (pop_info.ndim != 2)
-        throw std::runtime_error("Population must be 2D");
-
     int n_pairs = even_info.size;
     int n_vars = pop_info.shape[1];
-
-    if (odd_info.size != n_pairs || rand1_info.shape[0] != n_pairs || rand2_info.shape[0] != n_pairs)
-        throw std::runtime_error("Mismatch in number of pairs or random samples");
 
     float* pop_ptr = static_cast<float*>(pop_info.ptr);
     int* even_ptr = static_cast<int*>(even_info.ptr);
@@ -590,81 +567,97 @@ void construct_solutions_tsp_inner(
     }
 }
 
-vector<pair<int, int>> get_swap_sequence(const vector<int>& from_tour,
-                                         const vector<int>& to_tour) {
-    vector<pair<int, int>> seq;
-    vector<int> ft = from_tour;
-    unordered_map<int, int> position_map;
+std::vector<std::pair<int,int>> 
+get_swap_sequence(py::array_t<int, py::array::c_style | py::array::forcecast> from_np,
+                  py::array_t<int, py::array::c_style | py::array::forcecast> to_np)
+{
+    auto buf_f = from_np.request();
+    auto buf_t = to_np.request();
 
-    for (size_t i = 0; i < ft.size(); ++i) {
-        position_map[ft[i]] = i;
+    std::size_t n = buf_f.shape[0];
+    int* from_ptr = static_cast<int*>(buf_f.ptr);
+    int* to_ptr   = static_cast<int*>(buf_t.ptr);
+
+    // Vector de posiciones (asumiendo elementos en [0, n-1])
+    std::vector<int> pos_map(n);
+    for (std::size_t i = 0; i < n; ++i) {
+        pos_map[from_ptr[i]] = i;
     }
 
-    for (size_t idx = 0; idx < ft.size(); ++idx) {
-        int target_city = to_tour[idx];
-        if (ft[idx] == target_city) {
-            continue;
-        }
-        int swap_idx = position_map[target_city];
-        seq.emplace_back(idx, swap_idx);
+    std::vector<std::pair<int,int>> seq;
 
-        // Actualiza el mapa de posiciones
-        position_map[ft[swap_idx]] = idx;
-        position_map[ft[idx]] = swap_idx;
+    // Trabajar directamente sobre el array original virtual
+    std::vector<int> current_index(n);
+    std::iota(current_index.begin(), current_index.end(), 0);
 
-        // Realiza el intercambio
-        swap(ft[idx], ft[swap_idx]);
+    for (std::size_t i = 0; i < n; ++i) {
+        int target = to_ptr[i];
+        int current_val = from_ptr[current_index[i]];
+        
+        if (current_val == target) continue;
+        
+        int j = pos_map[target];
+        seq.emplace_back(i, j);
+        
+        // Actualizar solo las posiciones afectadas
+        std::swap(current_index[i], current_index[j]);
+        pos_map[current_val] = j;
+        pos_map[target] = i;
     }
-
     return seq;
 }
 
-// Versión batch
-vector<vector<pair<int, int>>> get_swap_sequence_batch(const vector<vector<int>>& from_tours,
-                                                       const vector<vector<int>>& to_tours) {
-    size_t n = from_tours.size();
-    vector<vector<pair<int, int>>> batch(n);
+// // Versión batch
+// vector<vector<pair<int, int>>> get_swap_sequence_batch(const vector<vector<int>>& from_tours,
+//                                                        const vector<vector<int>>& to_tours) {
+//     size_t n = from_tours.size();
+//     vector<vector<pair<int, int>>> batch(n);
 
-    #pragma omp parallel for shared(batch, from_tours, to_tours) schedule(dynamic)
-    for (size_t i = 0; i < n; ++i) {
-        batch[i] = get_swap_sequence(from_tours[i], to_tours[i]);
-    }
-    return batch;
-}
+//     #pragma omp parallel for shared(batch, from_tours, to_tours) schedule(dynamic)
+//     for (size_t i = 0; i < n; ++i) {
+//         batch[i] = get_swap_sequence(from_tours[i], to_tours[i]);
+//     }
+//     return batch;
+// }
 
-void two_opt(vector<vector<int>>& tours, const vector<vector<float>>& distances) {
-    size_t n_tours = tours.size();
+void two_opt(py::array_t<int, py::array::c_style | py::array::forcecast> tours_np,
+             py::array_t<float, py::array::c_style | py::array::forcecast> distances_np) {
+    // Obtener buffers y formas
+    auto buf_t = tours_np.request();
+    auto buf_d = distances_np.request();
 
-    #pragma omp parallel for schedule(dynamic) shared(tours, distances)
-    for (int t = 0; t < static_cast<int>(n_tours); ++t) {
-        auto& tour = tours[t];
-        int n = tour.size();
+    std::size_t n_tours = buf_t.shape[0];
+    std::size_t n       = buf_t.shape[1];
+
+    // Punteros a datos contiguos
+    int*    tours_ptr     = static_cast<int*>(buf_t.ptr);
+    float*  distances_ptr = static_cast<float*>(buf_d.ptr);
+
+    // Paralelizar a nivel de tours
+    #pragma omp parallel for schedule(guided) shared(tours_ptr, distances_ptr, n_tours, n)
+    for (std::size_t t = 0; t < n_tours; ++t) {
+        int* tour = tours_ptr + t * n;
         bool improved = false;
 
-        for (int i = 1; i < n - 2; ++i) {
+        for (std::size_t i = 1; i + 2 < n && !improved; ++i) {
             int a = tour[i - 1];
             int b = tour[i];
 
-            for (int k = i + 1; k < n - 1; ++k) {
+            float acost = distances_ptr[a * n + b];
+
+            for (std::size_t k = i + 1; k + 1 < n && !improved; ++k) {
                 int c = tour[k];
                 int d = tour[k + 1];
 
-                double delta = (distances[a][b] + distances[c][d]) - (distances[a][c] + distances[b][d]);
+                float delta = (acost + distances_ptr[c * n + d])
+                            - (distances_ptr[a * n + c] + distances_ptr[b * n + d]);
 
-                if (delta > 1e-6) {
-                    // Realiza la inversión del segmento
-                    int start = i;
-                    int end = k+1;
-                    while (start < end) {
-                        swap(tour[start], tour[end]);
-                        start++;
-                        end--;
-                    }
+                if (delta > 1e-6f) {
+                    // invertir subarray [i..k]
+                    std::reverse(tour + i, tour + k + 1);
                     improved = true;
-                    break;
                 }
             }
-            if (improved) break;
         }
     }
 }
@@ -699,8 +692,8 @@ PYBIND11_MODULE(utils, m) {
             py::arg("n_cities"), py::arg("alpha"), py::arg("epsilon"));
     m.def("get_swap_sequence", &get_swap_sequence, "Obtiene la secuencia de swaps entre dos tours",
             py::arg("from_tour"), py::arg("to_tour"));
-    m.def("get_swap_sequence_batch", &get_swap_sequence_batch, "Obtiene la secuencia de swaps para un batch de tours",
-            py::arg("from_tours"), py::arg("to_tours"));
-    m.def("two_opt", &two_opt, "Aplica el algoritmo 2-opt a un conjunto de tours",
+    // m.def("get_swap_sequence_batch", &get_swap_sequence_batch, "Obtiene la secuencia de swaps para un batch de tours",
+    //         py::arg("from_tours"), py::arg("to_tours"));
+    m.def("two_opt", &two_opt, "Optimiza tours TSP usando 2-opt",
             py::arg("tours"), py::arg("distances"));
 }
