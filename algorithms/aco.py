@@ -33,7 +33,9 @@ class ACO(Algorithm):
         if iterations <= 0:
             raise ValueError("Iterations must be greater than 0.")
 
-    def fit(self, verbose=True):
+    def fit(self, timelimit=None, verbose=True):
+        if timelimit is not None and timelimit > 0:
+            self.timelimit = timelimit
         time_start = time()
 
         self.init_seed(self.seed)
@@ -90,6 +92,86 @@ class ACO(Algorithm):
 
             iteration += 1
             self.print_update(best_fit, 1)
+
+        self.print_end()
+
+        return np.copy(best)
+    
+    def fit_mpi(self, rank, size, timelimit, verbose=True):
+        from mpi4py import MPI
+        if timelimit is not None and timelimit > 0:
+            self.timelimit = timelimit
+        time_start = time()
+
+        self.init_seed(self.seed)
+
+        # Inicializa las feromonas del problema.
+        pheromones = self.problem.initialize_pheromones()
+        best = None
+        best_fit = -np.inf
+
+        iteration = 0
+        no_improvement = 0
+        
+        if verbose and rank == 0:
+            self.print_init(time_start)
+
+        comm = MPI.COMM_WORLD
+
+        fitness_values = np.empty(self.colony_size, dtype=np.float32)
+        colony = self.problem.generate_solution(self.colony_size)
+
+        while iteration < self.iterations and time() - time_start < self.timelimit:
+            # Se generan soluciones a partir de las feromonas.
+            self.problem.construct_solutions(self.colony_size, pheromones, self.alpha, self.beta, out=colony)
+            if best is not None:
+                # Se reinicializan las soluciones de la colonia con la mejor solución encontrada.
+                colony[0] = best
+                fitness_values[0] = best_fit
+                # Se evalúan las soluciones generadas.
+                fitness_values[1:] = self.executer.execute(colony[1:])
+            else:
+                # Se evalúan las soluciones generadas.
+                fitness_values = self.executer.execute(colony)
+            
+            # Se selecciona la mejor solución de la colonia.
+            best_iteration_idx = np.argmax(fitness_values)
+            best_iteration_fit = fitness_values[best_iteration_idx]
+
+            # Se actualiza la mejor solución global si es necesario.
+            if best_iteration_fit > best_fit:
+                best = np.copy(colony[best_iteration_idx])
+                best_fit = best_iteration_fit
+                no_improvement = 0
+                # Enviar el mejor resultado al siguiente proceso
+                comm.send((rank, best, best_fit), dest=(rank + 1) % size, tag=0)
+            else:
+                no_improvement += 1
+
+            # Actualización de feromonas a partir de las soluciones actuales.
+            # Se delega la actualización en el problema.
+            pheromones = self.problem.update_pheromones(pheromones, colony, fitness_values, self.evaporation_rate)
+
+            # Si no hay mejora en varias iteraciones se reinicia la colonia.
+            if no_improvement >= self.reset_threshold:
+                # Se reinicializa las feromonas
+                pheromones = self.problem.reset_pheromones(pheromones)
+                # Se reinicializa el contador de no mejora
+                no_improvement = 0
+
+            # Recibir el mejor resultado del proceso anterior si hay mensajes
+            hay_mensaje = comm.Iprobe(source=(rank - 1) % size, tag=0)
+            while hay_mensaje:
+                rank_received, best_received, best_fit_received = comm.recv(source=(rank - 1) % size, tag=0)
+                if best_fit_received > best_fit:
+                    best = np.copy(best_received)
+                    best_fit = best_fit_received
+                if rank_received != rank:
+                    comm.send((rank_received, best, best_fit), dest=(rank + 1) % size, tag=0)
+                hay_mensaje = comm.Iprobe(source=(rank - 1) % size, tag=0)
+
+            iteration += 1
+            self.print_update(best_fit, iteration)
 
         self.print_end()
 

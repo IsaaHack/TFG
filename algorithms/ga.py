@@ -52,7 +52,10 @@ class GA(Algorithm):
 
         return new_population, fitness_values
     
-    def fit(self, verbose=True):
+    def fit(self, timelimit = None, verbose=True):
+        if timelimit is not None and timelimit > 0:
+            self.timelimit = timelimit
+
         time_start = time()
 
         self.init_seed(self.seed)
@@ -115,5 +118,89 @@ class GA(Algorithm):
 
         return np.copy(best)
 
+    def fit_mpi(self, rank, size, timelimit=None, verbose=True):
+        from mpi4py import MPI
+        if timelimit is not None and timelimit > 0:
+            self.timelimit = timelimit
 
+        time_start = time()
+
+        self.init_seed(self.seed)
+
+        if verbose and rank == 0:
+            self.print_init(time_start)
+
+        population = self.initialize_population()
+        fitness_values = self.executer.execute(population)
+        actual_generation = 1
+
+        best = np.copy(population[np.argmax(fitness_values)])
+        best_fit = fitness_values[np.argmax(fitness_values)]
+
+        no_improvement = 0
+        comm = MPI.COMM_WORLD
+
+        self.print_update(best_fit, rank)
+
+        while actual_generation < self.generations and time() - time_start < self.timelimit:
+            # Selection
+            new_population = self.selection(population, fitness_values)
+            # Crossover
+            self.problem.crossover(new_population, self.crossover_rate)
+            # Mutation
+            self.problem.mutation(new_population, self.mutation_rate)
+
+            # Evaluate fitness
+            fitness_values = self.executer.execute(new_population)
+
+            # Elitism
+            best_new_index = np.argmax(fitness_values)
+            worst_new_index = np.argmin(fitness_values)
+
+            best_new = new_population[best_new_index]
+            best_new_fit = fitness_values[best_new_index]
+
+            if best_new_fit > best_fit:
+                best = best_new
+                best_fit = best_new_fit
+                no_improvement = 0
+                #Enviar la mejor solución a el siguiente proceso
+                comm.send((rank, best, best_fit), dest=(rank + 1) % size, tag=0)
+            else:
+                new_population[worst_new_index] = best
+                fitness_values[worst_new_index] = best_fit
+                no_improvement += 1
+
+            # Reset if there is not improvement
+            if no_improvement >= self.reset_threshold:
+                population, fitness_values = self.reset_population(best, best_fit)
+                best_fit = np.argmax(fitness_values)
+                best = np.copy(population[best_fit])
+                best_fit = fitness_values[best_fit]
+                no_improvement = 0
+            else:
+                population = new_population
+
+            # Recibir el mejor resultado del proceso anterior si hay mensajes
+            hay_mensaje = comm.Iprobe(source=(rank - 1) % size, tag=0)
+            while hay_mensaje:
+                rank_received, best_received, best_fit_received = comm.recv(source=(rank - 1) % size, tag=0)
+                if best_fit_received > best_fit:
+                    best = np.copy(best_received)
+                    best_fit = best_fit_received
+                    # Sustituir la peor solución por la mejor recibida
+                    worst_new_index = np.argmin(fitness_values)
+                    new_population[worst_new_index] = best
+                    fitness_values[worst_new_index] = best_fit
+                if rank_received != rank:
+                    comm.send((rank_received, best, best_fit), dest=(rank + 1) % size, tag=0)
+                hay_mensaje = comm.Iprobe(source=(rank - 1) % size, tag=0)
+
+            actual_generation += 1
+            self.print_update(best_fit, rank)
+
+        if verbose and rank == 0:
+            self.print_end()
+
+        return np.copy(best)
     

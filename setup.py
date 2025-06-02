@@ -26,8 +26,8 @@ module_secuential = [
         'utils',
         sources=['./cpp/utils.cpp'],
         include_dirs=[np.get_include(), pybind11.get_include()],
-        extra_compile_args=["-O3", "-fopenmp", "-march=native"],
-        extra_link_args=["-O3", "-fopenmp", "-march=native"],
+        extra_compile_args=["-O3", "-fopenmp"],
+        extra_link_args=["-O3", "-fopenmp"],
         language='c++'
     )
 ]
