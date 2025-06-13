@@ -1,4 +1,4 @@
-import problems.problem as problem
+from . import Problem
 from . import utils, utils_gpu
 import cupy as cp
 import numpy as np
@@ -101,7 +101,7 @@ two_opt_kernel = cp.RawKernel(two_opt_kernel_src, 'two_opt_kernel')
 
 constructor_kernel_tsp = cp.RawKernel(_raw_kernel_code, 'construct_kernels')
 
-class TSPProblem(problem.Problem):
+class TSPProblem(Problem):
     def __init__(self, distances):
         self.distances_gpu = cp.asarray(distances, dtype=cp.float32, order='C')
         self.distances_gpu = cp.ascontiguousarray(self.distances_gpu)

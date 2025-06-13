@@ -1,5 +1,5 @@
 import numpy as np
-from problems.clas_problem import ClasProblem
+from problems import ClasProblem
 import time
 from sklearn.datasets import load_digits
 import timeit
@@ -70,7 +70,7 @@ print(f"Speedup OpenMP vs GPU: {np.mean(omp_times) / np.mean(gpu_times):.2f}x")
 print("-----------------------------------------------------------")
 
 print("-----------------------Fitness de TSP------------------------")
-from problems.tsp_problem import TSPProblem
+from problems import TSPProblem
 from scipy.spatial.distance import cdist
 import itertools
 
@@ -171,7 +171,7 @@ print("---------------------------GA-------------------------------")
 print("X_train shape:", X_train.shape)
 print("y_train shape:", y_train.shape)
 
-from algorithms.ga import GA
+from algorithms import GA
 
 problem = ClasProblem(X_train, y_train)
 problem2 = TSPProblem(dist_matrix)

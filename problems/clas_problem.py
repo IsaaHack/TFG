@@ -1,4 +1,4 @@
-import problems.problem as problem
+from . import Problem
 from . import utils, utils_gpu
 import cupy as cp
 import numpy as np
@@ -8,7 +8,7 @@ MIN_STD = 1e-3
 MAX_STD = 0.25
 MAX_V = np.sqrt(0.5)
 
-class ClasProblem(problem.Problem):
+class ClasProblem(Problem):
     def __init__(self, X, Y, threshold=0.1, alpha=0.25):
         self.X_gpu = cp.asarray(X, dtype=cp.float32, order='C')
         self.Y_gpu = cp.asarray(Y, dtype=cp.int32, order='C')
