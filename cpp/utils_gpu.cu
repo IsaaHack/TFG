@@ -50,28 +50,6 @@ __global__ void warmup_kernel() {
 }
 
 __global__ void tsp_fitness_kernel_multiple(
-    cudaTextureObject_t tex_distances,
-    const int* solutions,
-    float* fitness,
-    int n,
-    int num_solutions
-) {
-    // Índice global del hilo
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (tid < num_solutions) {
-        float sum = 0.0f;
-
-        for (int city_idx = 0; city_idx < n; ++city_idx) {
-            const int current_city = solutions[city_idx * num_solutions + tid];
-            const int next_city = solutions[((city_idx + 1) % n) * num_solutions + tid];
-            sum += tex2D<float>(tex_distances, current_city, next_city);
-        }
-        fitness[tid] = -sum;
-    }
-}
-
-__global__ void tsp_fitness_kernel_multiple(
     const float* distances,
     const int* solutions,
     float* fitness,
@@ -85,19 +63,21 @@ __global__ void tsp_fitness_kernel_multiple(
     if (tid < num_solutions) {
         float sum = 0.0f;
 
+        int from, to, start;
+        from = start = __ldg(&solution[0]);
+
         for(int i = 0; i < n-1; ++i) {
             // Obtener índices de la solución
-            int from = __ldg(&solution[i]);
-            int to = __ldg(&solution[i + 1]);  // Manejo circular automático
+            to = __ldg(&solution[i + 1]);  // Manejo circular automático
     
             // Acceso directo a memoria global
             sum += __ldg(&distances[from * n + to]);
+            from = to;  // Actualizar el nodo actual
         }
 
         //Hacer el camino circular
-        int from = __ldg(&solution[n - 1]);
-        int to = __ldg(&solution[0]);
-        sum += __ldg(&distances[from * n + to]);
+        //int from = __ldg(&solution[n - 1]);
+        sum += __ldg(&distances[from * n + start]);
     
         fitness[tid] = -sum;
     }

@@ -153,7 +153,7 @@ class TSPProblem(Problem):
         total_distances = cp.sum(distances, axis=1)
         
         # Fitness = negativo de la distancia total
-        return -total_distances.get()
+        return (-total_distances).get()
     
     def fitness_gpu(self, solutions):
         unique = False

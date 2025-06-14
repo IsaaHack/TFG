@@ -89,7 +89,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Extract distance matrix from a TSPlib .tsp file using NumPy.")
     parser.add_argument('tsp_file', help='TSPlib .tsp file path')
-    parser.add_argument('--algorithm', choices=['aco', 'ga', 'pso'], default='aco',
+    parser.add_argument('-a','--algorithm', choices=['aco', 'ga', 'pso'], default='aco',
                         help='Algorithm to use (default: aco)')
     args = parser.parse_args()
 
