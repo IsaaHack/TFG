@@ -4,20 +4,17 @@ from time import time
 import cupy as c
 
 class PSO(Algorithm):
-    def __init__(self, problem, swarm_size=100, inertia_weight=0.5, cognitive_weight=1.0, social_weight=1.0, iterations=100, seed=None, executer_type='single', executer=None, timelimit=np.inf):
+    def __init__(self, problem, swarm_size=100, inertia_weight=0.5, cognitive_weight=1.0, social_weight=1.0, seed=None, executer='single'):
         # Se definen los métodos requeridos que el problema debe implementar.
         required_methods = ['fitness', 'generate_solution', 'update_velocity', 'update_position']
-        super().__init__(problem, iterations, required_methods, executer_type, executer, timelimit)
+        super().__init__(problem, required_methods, executer)
 
         self.swarm_size = swarm_size
         self.inertia_weight = inertia_weight
         self.cognitive_weight = cognitive_weight
         self.social_weight = social_weight
-        self.iterations = iterations
         self.seed = seed
 
-        if iterations == np.inf and timelimit == np.inf:
-            raise ValueError("Either iterations or timelimit must be set to a finite value.")
         if swarm_size <= 0:
             raise ValueError("Swarm size must be greater than 0.")
         if inertia_weight < 0 or inertia_weight > 1:
@@ -26,18 +23,20 @@ class PSO(Algorithm):
             raise ValueError("Cognitive weight must be between 0 and 1.")
         if social_weight < 0 or social_weight > 1:
             raise ValueError("Social weight must be between 0 and 1.")
+        
+    def fit(self, iterations, timelimit=None, verbose=True):
+        if timelimit is None:
+            timelimit = np.inf
+        if timelimit < 0:
+                raise ValueError("Timelimit must be a non-negative value.")
         if iterations <= 0:
             raise ValueError("Iterations must be greater than 0.")
-        
-    def fit(self, timelimit=None, verbose=True):
-        if timelimit is not None and timelimit > 0:
-            self.timelimit = timelimit
         time_start = time()
 
         self.init_seed(self.seed)
 
         if verbose:
-            self.print_init(time_start)
+            self.print_init(time_start, iterations, timelimit)
 
         # Inicializar el enjambre
         swarm = self.problem.generate_solution(self.swarm_size)
@@ -56,9 +55,9 @@ class PSO(Algorithm):
         
         self.print_update(g_best_fitness)
 
-        while iteration < self.iterations and time() - time_start < self.timelimit:
+        while iteration < iterations and time() - time_start < timelimit:
             # Actualizar inercia
-            inertia = max(0.1, self.inertia_weight * (1 - iteration / self.iterations))
+            inertia = max(0.1, self.inertia_weight * (1 - iteration / iterations))
 
             # Actualizar velocidad y posición usando métodos del problema
             velocity = self.problem.update_velocity(swarm, velocity, p_best, g_best,
@@ -86,16 +85,18 @@ class PSO(Algorithm):
         self.print_end()
         return np.copy(g_best)
     
-    def fit_mpi(self, rank, size, timelimit=None, verbose=True):
-        from mpi4py import MPI
-        if timelimit is not None and timelimit > 0:
-            self.timelimit = timelimit
+    def fit_mpi(self, comm, rank, timelimit, sendto, receivefrom, verbose=True):
+        if timelimit < 0:
+            raise ValueError("Timelimit must be a non-negative value.")
+
+        iterations = np.inf
+
         time_start = time()
 
         self.init_seed(self.seed)
 
         if verbose and rank == 0:
-            self.print_init(time_start)
+            self.print_init(time_start, iterations, timelimit)
 
         # Inicializar el enjambre
         swarm = self.problem.generate_solution(self.swarm_size)
@@ -110,15 +111,13 @@ class PSO(Algorithm):
 
         inertia = self.inertia_weight
 
-        comm = MPI.COMM_WORLD
-
         iteration = 1
         
         self.print_update(g_best_fitness)
 
-        while iteration < self.iterations and time() - time_start < self.timelimit:
+        while iteration < iterations and time() - time_start < timelimit:
             # Actualizar inercia
-            inertia = max(0.1, self.inertia_weight * (1 - iteration / self.iterations))
+            inertia = max(0.1, self.inertia_weight * (1 - iteration / iterations))
 
             # Actualizar velocidad y posición usando métodos del problema
             velocity = self.problem.update_velocity(swarm, velocity, p_best, g_best,
@@ -140,23 +139,25 @@ class PSO(Algorithm):
                 g_best = np.copy(p_best[current_best_idx])
                 g_best_fitness = current_best_fitness
                 # Enviar el mejor resultado al siguiente proceso
-                comm.send((rank, g_best, g_best_fitness), dest=(rank + 1) % size, tag=0)
+                comm.send((rank, g_best, g_best_fitness), dest=sendto, tag=0)
 
-            # Recibir el mejor resultado del proceso anterior si hay mensajes
-            hay_mensaje = comm.Iprobe(source=(rank - 1) % size, tag=0)
+            # Recibir el mejor resultado del proceso recievefrom
+            hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
             while hay_mensaje:
-                rank_received, best_received, best_fit_received = comm.recv(source=(rank - 1) % size, tag=0)
+                rank_received, best_received, best_fit_received = comm.recv(source=receivefrom, tag=0)
                 if best_fit_received > g_best_fitness:
                     g_best = np.copy(best_received)
                     g_best_fitness = best_fit_received
                 if rank_received != rank:
-                    comm.send((rank_received, g_best, g_best_fitness), dest=(rank + 1) % size, tag=0)
-                hay_mensaje = comm.Iprobe(source=(rank - 1) % size, tag=0)
+                    comm.send((rank_received, g_best, g_best_fitness), dest=sendto, tag=0)
+                hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
 
             iteration += 1
             
             self.print_update(g_best_fitness)
 
         self.print_end()
+
+        comm.send((rank, g_best, g_best_fitness), dest=sendto, tag=1)
         
         return np.copy(g_best)

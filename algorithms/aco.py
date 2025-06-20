@@ -1,25 +1,20 @@
 from . import Algorithm
 import numpy as np
 from time import time
-import cupy as cp
 
 class ACO(Algorithm):
-    def __init__(self, problem, colony_size=50, evaporation_rate=0.1, iterations=100, alpha=1.0, beta=2.0, seed=None,reset_threshold=100, executer_type='single', executer=None, timelimit=np.inf):
+    def __init__(self, problem, colony_size=50, evaporation_rate=0.1, alpha=1.0, beta=2.0, seed=None, reset_threshold=100, executer='single'):
         # Se definen los métodos requeridos que el problema debe implementar.
         required_methods = ['fitness', 'initialize_pheromones', 'construct_solutions', 'update_pheromones', 'reset_pheromones']
-        super().__init__(problem, iterations, required_methods, executer_type, executer, timelimit)
+        super().__init__(problem, required_methods, executer)
         
         self.colony_size = colony_size
         self.evaporation_rate = evaporation_rate
-        self.iterations = iterations
         self.alpha = alpha
         self.beta = beta
         self.seed = seed
         self.reset_threshold = reset_threshold
-        self.timelimit = timelimit
 
-        if iterations == np.inf and timelimit == np.inf:
-            raise ValueError("Either iterations or timelimit must be set to a finite value.")
         if colony_size <= 0:
             raise ValueError("Colony size must be greater than 0.")
         if evaporation_rate <= 0 or evaporation_rate >= 1:
@@ -30,15 +25,21 @@ class ACO(Algorithm):
             raise ValueError("Beta must be greater than 0.")
         if reset_threshold <= 0:
             raise ValueError("Reset threshold must be greater than 0.")
+
+    def fit(self, iterations, timelimit=None, verbose=True):
+        if timelimit is None:
+            timelimit = np.inf
+        if timelimit < 0:
+                raise ValueError("Timelimit must be a non-negative value.")
         if iterations <= 0:
             raise ValueError("Iterations must be greater than 0.")
-
-    def fit(self, timelimit=None, verbose=True):
-        if timelimit is not None and timelimit > 0:
-            self.timelimit = timelimit
+        
         time_start = time()
-
+        
         self.init_seed(self.seed)
+
+        if verbose:
+            self.print_init(time_start, iterations, timelimit)
 
         # Inicializa las feromonas del problema.
         pheromones = self.problem.initialize_pheromones()
@@ -47,14 +48,11 @@ class ACO(Algorithm):
 
         iteration = 0
         no_improvement = 0
-        
-        if verbose:
-            self.print_init(time_start)
 
         fitness_values = np.empty(self.colony_size, dtype=np.float32)
         colony = self.problem.generate_solution(self.colony_size)
 
-        while iteration < self.iterations and time() - time_start < self.timelimit:
+        while iteration < iterations and time() - time_start < timelimit:
             # Se generan soluciones a partir de las feromonas.
             self.problem.construct_solutions(self.colony_size, pheromones, self.alpha, self.beta, out=colony)
             if best is not None:
@@ -97,10 +95,12 @@ class ACO(Algorithm):
 
         return np.copy(best)
     
-    def fit_mpi(self, rank, size, timelimit, verbose=True):
-        from mpi4py import MPI
-        if timelimit is not None and timelimit > 0:
-            self.timelimit = timelimit
+    def fit_mpi(self, comm, rank, timelimit, sendto, receivefrom, verbose=True):
+        if timelimit < 0:
+            raise ValueError("Timelimit must be a non-negative value.")
+
+        iterations = np.inf
+
         time_start = time()
 
         self.init_seed(self.seed)
@@ -114,14 +114,12 @@ class ACO(Algorithm):
         no_improvement = 0
         
         if verbose and rank == 0:
-            self.print_init(time_start)
-
-        comm = MPI.COMM_WORLD
+            self.print_init(time_start, iterations, timelimit)
 
         fitness_values = np.empty(self.colony_size, dtype=np.float32)
         colony = self.problem.generate_solution(self.colony_size)
 
-        while iteration < self.iterations and time() - time_start < self.timelimit:
+        while iteration < iterations and time() - time_start < timelimit:
             # Se generan soluciones a partir de las feromonas.
             self.problem.construct_solutions(self.colony_size, pheromones, self.alpha, self.beta, out=colony)
             if best is not None:
@@ -144,7 +142,7 @@ class ACO(Algorithm):
                 best_fit = best_iteration_fit
                 no_improvement = 0
                 # Enviar el mejor resultado al siguiente proceso
-                comm.send((rank, best, best_fit), dest=(rank + 1) % size, tag=0)
+                comm.send((rank, best, best_fit), dest=sendto, tag=0)
             else:
                 no_improvement += 1
 
@@ -159,20 +157,22 @@ class ACO(Algorithm):
                 # Se reinicializa el contador de no mejora
                 no_improvement = 0
 
-            # Recibir el mejor resultado del proceso anterior si hay mensajes
-            hay_mensaje = comm.Iprobe(source=(rank - 1) % size, tag=0)
+            # Recibir el mejor resultado del proceso receivefrom
+            hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
             while hay_mensaje:
-                rank_received, best_received, best_fit_received = comm.recv(source=(rank - 1) % size, tag=0)
+                rank_received, best_received, best_fit_received = comm.recv(source=receivefrom, tag=0)
                 if best_fit_received > best_fit:
                     best = np.copy(best_received)
                     best_fit = best_fit_received
                 if rank_received != rank:
-                    comm.send((rank_received, best, best_fit), dest=(rank + 1) % size, tag=0)
-                hay_mensaje = comm.Iprobe(source=(rank - 1) % size, tag=0)
+                    comm.send((rank_received, best, best_fit), dest=sendto, tag=0)
+                hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
 
             iteration += 1
             self.print_update(best_fit, iteration)
 
         self.print_end()
+
+        comm.send((rank, best, best_fit), dest=sendto, tag=1)
 
         return np.copy(best)

@@ -30,13 +30,13 @@ if rank == 0:
 
 problem = TSPProblem(dist_matrix_np)
 
-algorithm0 = GA(problem, population_size=1024, generations=np.inf, seed=42, executer_type='gpu', mutation_rate=0.12, crossover_rate=0.85, tournament_size=6, timelimit=60)
-algorithm1 = ACO(problem, colony_size=1024, iterations=np.inf, seed=42, executer_type='gpu', alpha=1.2, beta=4.0, evaporation_rate=0.01, timelimit=60)
-algorithm2 = PSO(problem, swarm_size=1024, iterations=np.inf, seed=42, executer_type='gpu', inertia_weight=0.4, cognitive_weight=0.6, social_weight=0.7, timelimit=60)
+algorithm0 = GA(problem, population_size=1024, seed=42, executer='gpu', mutation_rate=0.12, crossover_rate=0.85, tournament_size=6)
+algorithm1 = ACO(problem, colony_size=1024, seed=42, executer='gpu', alpha=1.2, beta=4.0, evaporation_rate=0.01)
+algorithm2 = PSO(problem, swarm_size=1024, seed=42, executer='gpu', inertia_weight=0.4, cognitive_weight=0.6, social_weight=0.7)
 
 algorithms = [algorithm0, algorithm1, algorithm2]
-executer = ClusterExecuter(algorithms)
-path = executer.execute(rank, size, timelimit=60*3, verbose=False)
+executer = ClusterExecuter(algorithms, type='distributed')
+path = executer.execute(comm, rank, size, timelimit=60, verbose=False)
 fit = problem.fitness(path)
 
 #Reunir resultados de todos los procesos

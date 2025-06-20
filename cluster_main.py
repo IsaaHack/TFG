@@ -19,6 +19,8 @@ def main():
     program_args = args.problem_file.split() if args.problem_file else []
     nodes = ['compute2', 'compute3', 'compute4']
 
+    print(f"Running {filename} on nodes: {nodes} with problem file: {args.problem_file}")
+
     cluster_execute_run(filename, nodes, program_args)
 
 if __name__ == "__main__":

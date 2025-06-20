@@ -45,7 +45,7 @@ def main():
         print(f"Running tests for {algorithm.upper()} with {executer_type} executer type...")
 
         test_algorithms_main(
-            algorithm=algorithm,
+            algorithm_name=algorithm,
             executer_type=executer_type
         )
     elif choice == '2':

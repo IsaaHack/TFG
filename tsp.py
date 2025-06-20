@@ -105,17 +105,20 @@ def main():
     problem = TSPProblem(dist_matrix_np)
     if args.algorithm == 'ga':
         print("Using Genetic Algorithm...")
-        algoritm = GA(problem, population_size=1024, generations=10000, seed=42, executer_type='gpu', mutation_rate=0.12, crossover_rate=0.85, tournament_size=6)
+        algoritm = GA(problem, population_size=1024, seed=42, executer='gpu', mutation_rate=0.12, crossover_rate=0.85, tournament_size=6)
+        iterations = 10000
     elif args.algorithm == 'aco':
         print("Using Ant Colony Optimization...")
-        algoritm = ACO(problem, colony_size=1024, iterations=10000, seed=42, executer_type='gpu', alpha=1.2, beta=4.0, evaporation_rate=0.01)
+        algoritm = ACO(problem, colony_size=1024, seed=42, executer='gpu', alpha=1.2, beta=4.0, evaporation_rate=0.01)
+        iterations = 10000
     elif args.algorithm == 'pso':
         print("Using Particle Swarm Optimization...")
-        algoritm = PSO(problem, swarm_size=1024, iterations=1000, seed=42, executer_type='gpu', inertia_weight=0.4, cognitive_weight=0.6, social_weight=0.7)
+        algoritm = PSO(problem, swarm_size=1024, seed=42, executer='gpu', inertia_weight=0.4, cognitive_weight=0.6, social_weight=0.7)
+        iterations = 1000
 
     print("Starting Algorithm...")
     start = time()
-    path = algoritm.fit(verbose=True)
+    path = algoritm.fit(iterations, verbose=True)
     end = time()
     print("Time:", end - start)
     fit = problem.fitness(path)

@@ -4,3 +4,4 @@ scipy
 scikit-learn
 pybind11
 mpi4py
+cupy-cuda12

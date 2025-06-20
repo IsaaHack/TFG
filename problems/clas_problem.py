@@ -76,30 +76,30 @@ class ClasProblem(Problem):
         fitness_values = clas_rate * 0.75 + red_rate * 0.25
         return fitness_values.get()  # Convertir de cupy a numpy
     
-    def fitness_gpu2(self, solutions):
-        solutions_gpu = cp.asarray(solutions, dtype=cp.float32, order='C')
+    # def fitness_gpu2(self, solutions):
+    #     solutions_gpu = cp.asarray(solutions, dtype=cp.float32, order='C')
 
-        X_capsule = utils_gpu.create_capsule(self.X_gpu.data.ptr)
-        Y_capsule = utils_gpu.create_capsule(self.Y_gpu.data.ptr)
+    #     X_capsule = utils_gpu.create_capsule(self.X_gpu.data.ptr)
+    #     Y_capsule = utils_gpu.create_capsule(self.Y_gpu.data.ptr)
         
-        cp.cuda.Device().synchronize()  # Sincroniza el dispositivo antes de llamar a la función CUDA
+    #     cp.cuda.Device().synchronize()  # Sincroniza el dispositivo antes de llamar a la función CUDA
 
-        if len(solutions.shape) == 1:
-            return utils_gpu.fitness_cuda(
-                    utils_gpu.create_capsule(solutions_gpu.data.ptr),
-                    X_capsule,
-                    Y_capsule,
-                    self.n_samples,
-                    self.n_features
-            )
-        else:
-            return np.array([utils_gpu.fitness_cuda(
-                    utils_gpu.create_capsule(solutions_gpu[i].data.ptr),
-                    X_capsule,
-                    Y_capsule,
-                    self.n_samples,
-                    self.n_features
-            ) for i in range(solutions.shape[0])])
+    #     if len(solutions.shape) == 1:
+    #         return utils_gpu.fitness_cuda(
+    #                 utils_gpu.create_capsule(solutions_gpu.data.ptr),
+    #                 X_capsule,
+    #                 Y_capsule,
+    #                 self.n_samples,
+    #                 self.n_features
+    #         )
+    #     else:
+    #         return np.array([utils_gpu.fitness_cuda(
+    #                 utils_gpu.create_capsule(solutions_gpu[i].data.ptr),
+    #                 X_capsule,
+    #                 Y_capsule,
+    #                 self.n_samples,
+    #                 self.n_features
+    #         ) for i in range(solutions.shape[0])])
         
     def fitness_hybrid(self, solutions, speedup=1):
         if len(solutions.shape) == 1:

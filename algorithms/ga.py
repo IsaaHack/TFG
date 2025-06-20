@@ -4,21 +4,18 @@ from time import time
 import cupy as cp
 
 class GA(Algorithm):
-    def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, generations=100, seed=None, tournament_size=3, reset_threshold=100, executer_type='single', executer=None, timelimit=np.inf):
+    def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, seed=None, tournament_size=3, reset_threshold=100, executer='single'):
         required_methods = ['fitness', 'generate_solution', 'mutation', 'crossover']
 
-        super().__init__(problem, generations, required_methods, executer_type, executer, timelimit)
+        super().__init__(problem, required_methods, executer)
 
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
-        self.generations = generations
         self.seed = seed
         self.tournament_size = tournament_size
         self.reset_threshold = reset_threshold
 
-        if generations == np.inf and timelimit == np.inf:
-            raise ValueError("Either generations or timelimit must be set to a finite value.")
         if population_size <= 0:
             raise ValueError("Population size must be greater than 0.")
         if mutation_rate < 0 or mutation_rate > 1:
@@ -27,8 +24,6 @@ class GA(Algorithm):
             raise ValueError("Crossover rate must be between 0 and 1.")
         if tournament_size <= 0:
             raise ValueError("Print frequency must be greater than 0.")
-        if generations <= 0:
-            raise ValueError("Generations must be greater than 0.")
 
     def initialize_population(self):
         return self.problem.generate_solution(self.population_size)
@@ -52,16 +47,20 @@ class GA(Algorithm):
 
         return new_population, fitness_values
     
-    def fit(self, timelimit = None, verbose=True):
-        if timelimit is not None and timelimit > 0:
-            self.timelimit = timelimit
+    def fit(self, iterations, timelimit=None, verbose=True):
+        if timelimit is None:
+            timelimit = np.inf
+        if timelimit < 0:
+                raise ValueError("Timelimit must be a non-negative value.")
+        if iterations <= 0:
+            raise ValueError("Iterations must be greater than 0.")
 
         time_start = time()
 
-        self.init_seed(self.seed)
-
         if verbose:
-            self.print_init(time_start)
+            self.print_init(time_start, iterations, timelimit)
+
+        self.init_seed(self.seed)
 
         population = self.initialize_population()
         fitness_values = self.executer.execute(population)
@@ -74,7 +73,7 @@ class GA(Algorithm):
 
         self.print_update(best_fit)
 
-        while actual_generation < self.generations and time() - time_start < self.timelimit:
+        while actual_generation < iterations and time() - time_start < timelimit:
             # Selection
             new_population = self.selection(population, fitness_values)
             # Crossover
@@ -118,17 +117,18 @@ class GA(Algorithm):
 
         return np.copy(best)
 
-    def fit_mpi(self, rank, size, timelimit=None, verbose=True):
-        from mpi4py import MPI
-        if timelimit is not None and timelimit > 0:
-            self.timelimit = timelimit
-
+    def fit_mpi(self, comm, rank, timelimit, sendto, receivefrom, verbose=True):
+        if timelimit < 0:
+            raise ValueError("Timelimit must be a non-negative value.")
+            
+        iterations = np.inf
+            
         time_start = time()
 
         self.init_seed(self.seed)
 
         if verbose and rank == 0:
-            self.print_init(time_start)
+            self.print_init(time_start, iterations, timelimit)
 
         population = self.initialize_population()
         fitness_values = self.executer.execute(population)
@@ -138,11 +138,10 @@ class GA(Algorithm):
         best_fit = fitness_values[np.argmax(fitness_values)]
 
         no_improvement = 0
-        comm = MPI.COMM_WORLD
 
         self.print_update(best_fit, rank)
 
-        while actual_generation < self.generations and time() - time_start < self.timelimit:
+        while actual_generation < iterations and time() - time_start < timelimit:
             # Selection
             new_population = self.selection(population, fitness_values)
             # Crossover
@@ -165,7 +164,7 @@ class GA(Algorithm):
                 best_fit = best_new_fit
                 no_improvement = 0
                 #Enviar la mejor solución a el siguiente proceso
-                comm.send((rank, best, best_fit), dest=(rank + 1) % size, tag=0)
+                comm.send((rank, best, best_fit), dest=sendto, tag=0)
             else:
                 new_population[worst_new_index] = best
                 fitness_values[worst_new_index] = best_fit
@@ -181,10 +180,10 @@ class GA(Algorithm):
             else:
                 population = new_population
 
-            # Recibir el mejor resultado del proceso anterior si hay mensajes
-            hay_mensaje = comm.Iprobe(source=(rank - 1) % size, tag=0)
+            # Recibir el mejor resultado del proceso receivefrom
+            hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
             while hay_mensaje:
-                rank_received, best_received, best_fit_received = comm.recv(source=(rank - 1) % size, tag=0)
+                rank_received, best_received, best_fit_received = comm.recv(source=receivefrom, tag=0)
                 if best_fit_received > best_fit:
                     best = np.copy(best_received)
                     best_fit = best_fit_received
@@ -193,14 +192,15 @@ class GA(Algorithm):
                     new_population[worst_new_index] = best
                     fitness_values[worst_new_index] = best_fit
                 if rank_received != rank:
-                    comm.send((rank_received, best, best_fit), dest=(rank + 1) % size, tag=0)
-                hay_mensaje = comm.Iprobe(source=(rank - 1) % size, tag=0)
+                    comm.send((rank_received, best, best_fit), dest=sendto, tag=0)
+                hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
 
             actual_generation += 1
             self.print_update(best_fit, rank)
 
-        if verbose and rank == 0:
-            self.print_end()
+        self.print_end()
+
+        comm.send((rank, best, best_fit), dest=sendto, tag=1)
 
         return np.copy(best)
     

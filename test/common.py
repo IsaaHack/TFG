@@ -51,12 +51,12 @@ def experiment_fitness(problem, weights, N):
     print("-----------------------------------------------------------")
 
     # Fitness Hybrid
-    # def hybrid_function():
-    #     return problem.fitness_hybrid(weights)
-    # hybrid_times = timeit.repeat(hybrid_function, number=1, repeat=N)
-    # print("Fitness Hybrid:", problem.fitness_hybrid(weights)[0][0])    
-    # print(f"Time (Hybrid): {np.mean(hybrid_times):.6f}s ± {np.std(hybrid_times):.6f}s")
-    # print("-----------------------------------------------------------")
+    def hybrid_function():
+        return problem.fitness_hybrid(weights)
+    hybrid_times = timeit.repeat(hybrid_function, number=1, repeat=N)
+    print("Fitness Hybrid:", problem.fitness_hybrid(weights)[0][0])    
+    print(f"Time (Hybrid): {np.mean(hybrid_times):.6f}s ± {np.std(hybrid_times):.6f}s")
+    print("-----------------------------------------------------------")
 
     # Speedups
     cpu_speedup = np.mean(cpu_times) / np.mean(omp_times)

@@ -4,20 +4,20 @@ from problems import ClasProblem, TSPProblem
 from algorithms import GA, ACO, PSO
 import time
 
+clas_iters = 300
+tsp_iters = 100
+
 ga_params_clas = {
     'population_size': 50,
-    'generations': 300,
     'seed': 42,
 }
 ga_params_tsp = {
     'population_size': 1024,
-    'generations': 100,
     'seed': 42,
     'mutation_rate': 0.2,
 }
 aco_params_clas = {
     'colony_size': 50,
-    'iterations': 300,
     'seed': 42,
     'evaporation_rate': 0.03,
     'alpha': 1.0,
@@ -25,14 +25,12 @@ aco_params_clas = {
 }
 aco_params_tsp = {
     'colony_size': 1024,
-    'iterations': 100,
     'seed': 42,
     'alpha': 1.7,
     'beta': 1.2
 }
 pso_params_clas = {
     'swarm_size': 50,
-    'iterations': 300,
     'seed': 42,
     'inertia_weight': 0.9,
     'cognitive_weight': 0.4,
@@ -40,7 +38,6 @@ pso_params_clas = {
 }
 pso_params_tsp = {
     'swarm_size': 1024,
-    'iterations': 100,
     'seed': 42,
     'inertia_weight': 0.9,
     'cognitive_weight': 0.4,
@@ -64,21 +61,21 @@ def main(algorithm_name='ga', executer_type='gpu', seed=42, n_cities=100):
 
     match algorithm_name:
         case 'ga':
-            algorithm = GA(problem, **ga_params_clas, executer_type=executer_type)
-            algorithm2 = GA(problem2, **ga_params_tsp, executer_type=executer_type)
+            algorithm = GA(problem, **ga_params_clas, executer=executer_type)
+            algorithm2 = GA(problem2, **ga_params_tsp, executer=executer_type)
         case 'aco':
-            algorithm = ACO(problem, **aco_params_clas, executer_type=executer_type)
-            algorithm2 = ACO(problem2, **aco_params_tsp, executer_type=executer_type)
+            algorithm = ACO(problem, **aco_params_clas, executer=executer_type)
+            algorithm2 = ACO(problem2, **aco_params_tsp, executer=executer_type)
         case 'pso':
-            algorithm = PSO(problem, **pso_params_clas, executer_type=executer_type)
-            algorithm2 = PSO(problem2, **pso_params_tsp, executer_type=executer_type)
+            algorithm = PSO(problem, **pso_params_clas, executer=executer_type)
+            algorithm2 = PSO(problem2, **pso_params_tsp, executer=executer_type)
         case _:
             raise ValueError(f"Unknown algorithm: {algorithm_name}")
         
     print(f"Starting {algorithm_name.upper()} Clas...")
 
     start = time.time()
-    weights = algorithm.fit()
+    weights = algorithm.fit(iterations=clas_iters)
     end = time.time()
 
     print("Time:", end - start)
@@ -94,7 +91,7 @@ def main(algorithm_name='ga', executer_type='gpu', seed=42, n_cities=100):
     print(f"Starting {algorithm_name.upper()} TSP...")
 
     start = time.time()
-    path = algorithm2.fit()
+    path = algorithm2.fit(iterations=tsp_iters)
     end = time.time()
 
     print("Time:", end - start)

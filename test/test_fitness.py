@@ -1,7 +1,6 @@
 import numpy as np
 from problems import ClasProblem, TSPProblem
 import time
-from sklearn.datasets import load_digits
 from .common import generate_distance_matrix, tsp_optimal_solution, experiment_fitness, get_digits_data
 
 def main():

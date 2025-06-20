@@ -98,7 +98,6 @@ void two_opt_kernel(int* tours, float* distances,
 '''
 
 two_opt_kernel = cp.RawKernel(two_opt_kernel_src, 'two_opt_kernel')
-
 constructor_kernel_tsp = cp.RawKernel(_raw_kernel_code, 'construct_kernels')
 
 class TSPProblem(Problem):
