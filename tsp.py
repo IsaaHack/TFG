@@ -85,15 +85,8 @@ def build_distance_matrix(meta, coords_arr, edge_lines):
     return matrix
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Extract distance matrix from a TSPlib .tsp file using NumPy.")
-    parser.add_argument('tsp_file', help='TSPlib .tsp file path')
-    parser.add_argument('-a','--algorithm', choices=['aco', 'ga', 'pso'], default='aco',
-                        help='Algorithm to use (default: aco)')
-    args = parser.parse_args()
-
-    meta, node_lines, edge_lines = read_tsp_file(args.tsp_file)
+def main(tsp_file, algorithm, executer='gpu'):
+    meta, node_lines, edge_lines = read_tsp_file(tsp_file)
     coords_arr = extract_coords(node_lines) if node_lines else None
     dist_matrix = build_distance_matrix(meta, coords_arr, edge_lines)
 
@@ -103,17 +96,17 @@ def main():
     print("Distance matrix shape:", dist_matrix_np.shape)
 
     problem = TSPProblem(dist_matrix_np)
-    if args.algorithm == 'ga':
+    if algorithm == 'ga':
         print("Using Genetic Algorithm...")
-        algoritm = GA(problem, population_size=1024, seed=42, executer='gpu', mutation_rate=0.12, crossover_rate=0.85, tournament_size=6)
+        algoritm = GA(problem, population_size=1024, seed=42, executer=executer, mutation_rate=0.12, crossover_rate=0.85, tournament_size=6)
         iterations = 10000
-    elif args.algorithm == 'aco':
+    elif algorithm == 'aco':
         print("Using Ant Colony Optimization...")
-        algoritm = ACO(problem, colony_size=1024, seed=42, executer='gpu', alpha=1.2, beta=4.0, evaporation_rate=0.01)
+        algoritm = ACO(problem, colony_size=1024, seed=42, executer=executer, alpha=1.2, beta=4.0, evaporation_rate=0.01)
         iterations = 10000
-    elif args.algorithm == 'pso':
+    elif algorithm == 'pso':
         print("Using Particle Swarm Optimization...")
-        algoritm = PSO(problem, swarm_size=1024, seed=42, executer='gpu', inertia_weight=0.4, cognitive_weight=0.6, social_weight=0.7)
+        algoritm = PSO(problem, swarm_size=1024, seed=42, executer=executer, inertia_weight=0.4, cognitive_weight=0.6, social_weight=0.7)
         iterations = 1000
 
     print("Starting Algorithm...")
@@ -135,7 +128,7 @@ def main():
         print("Repeated cities or out of range")
     
     # Intentar cargar solución óptima si existe
-    opt_path = args.tsp_file.replace(".tsp", ".opt.tour")
+    opt_path = tsp_file.replace(".tsp", ".opt.tour")
     if os.path.exists(opt_path):
         print(f"\nArchivo de óptimo encontrado: {opt_path}")
         with open(opt_path, 'r') as f:
@@ -182,4 +175,12 @@ def main():
         print("\nNo se encontró archivo con la solución óptima.")
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(
+        description="Extract distance matrix from a TSPlib .tsp file using NumPy.")
+    parser.add_argument('tsp_file', help='TSPlib .tsp file path')
+    parser.add_argument('-a','--algorithm', choices=['aco', 'ga', 'pso'], default='aco',
+                        help='Algorithm to use (default: aco)')
+    parser.add_argument('-e', '--executer', choices=['single', 'multi', 'gpu', 'hybrid'], default='gpu',
+                        help='Execution type: single, multi, gpu, or hybrid (default: gpu)')
+    args = parser.parse_args()
+    main(args.tsp_file, args.algorithm, args.executer)

@@ -1,7 +1,8 @@
 from . import Algorithm
 import numpy as np
 from time import time
-import cupy as cp
+from . import MESSAGE_TAG, FINISH_TAG
+import pickle, zlib
 
 class GA(Algorithm):
     def __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, seed=None, tournament_size=3, reset_threshold=100, executer='single'):
@@ -164,7 +165,9 @@ class GA(Algorithm):
                 best_fit = best_new_fit
                 no_improvement = 0
                 #Enviar la mejor solución a el siguiente proceso
-                comm.send((rank, best, best_fit), dest=sendto, tag=0)
+                data = (rank, best, best_fit)
+                data_serialized = zlib.compress(pickle.dumps(data), level=9)
+                comm.send(data_serialized, dest=sendto, tag=MESSAGE_TAG)
             else:
                 new_population[worst_new_index] = best
                 fitness_values[worst_new_index] = best_fit
@@ -181,9 +184,9 @@ class GA(Algorithm):
                 population = new_population
 
             # Recibir el mejor resultado del proceso receivefrom
-            hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
+            hay_mensaje = comm.Iprobe(source=receivefrom, tag=MESSAGE_TAG)
             while hay_mensaje:
-                rank_received, best_received, best_fit_received = comm.recv(source=receivefrom, tag=0)
+                rank_received, best_received, best_fit_received = pickle.loads(zlib.decompress(comm.recv(source=receivefrom, tag=MESSAGE_TAG)))
                 if best_fit_received > best_fit:
                     best = np.copy(best_received)
                     best_fit = best_fit_received
@@ -192,15 +195,19 @@ class GA(Algorithm):
                     new_population[worst_new_index] = best
                     fitness_values[worst_new_index] = best_fit
                 if rank_received != rank:
-                    comm.send((rank_received, best, best_fit), dest=sendto, tag=0)
-                hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
+                    data = (rank, best, best_fit)
+                    data_serialized = zlib.compress(pickle.dumps(data), level=9)
+                    comm.send(data_serialized, dest=sendto, tag=MESSAGE_TAG)
+                hay_mensaje = comm.Iprobe(source=receivefrom, tag=MESSAGE_TAG)
 
             actual_generation += 1
             self.print_update(best_fit, rank)
 
         self.print_end()
 
-        comm.send((rank, best, best_fit), dest=sendto, tag=1)
+        data = (rank, best, best_fit)
+        data_serialized = zlib.compress(pickle.dumps(data), level=9)
+        comm.send(data_serialized, dest=sendto, tag=FINISH_TAG)
 
         return np.copy(best)
     

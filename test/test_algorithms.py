@@ -59,18 +59,17 @@ def main(algorithm_name='ga', executer_type='gpu', seed=42, n_cities=100):
     problem = ClasProblem(X_train, y_train)
     problem2 = TSPProblem(dist_matrix)
 
-    match algorithm_name:
-        case 'ga':
-            algorithm = GA(problem, **ga_params_clas, executer=executer_type)
-            algorithm2 = GA(problem2, **ga_params_tsp, executer=executer_type)
-        case 'aco':
-            algorithm = ACO(problem, **aco_params_clas, executer=executer_type)
-            algorithm2 = ACO(problem2, **aco_params_tsp, executer=executer_type)
-        case 'pso':
-            algorithm = PSO(problem, **pso_params_clas, executer=executer_type)
-            algorithm2 = PSO(problem2, **pso_params_tsp, executer=executer_type)
-        case _:
-            raise ValueError(f"Unknown algorithm: {algorithm_name}")
+    if algorithm_name == 'ga':
+        algorithm = GA(problem, **ga_params_clas, executer=executer_type)
+        algorithm2 = GA(problem2, **ga_params_tsp, executer=executer_type)
+    elif algorithm_name == 'aco':
+        algorithm = ACO(problem, **aco_params_clas, executer=executer_type)
+        algorithm2 = ACO(problem2, **aco_params_tsp, executer=executer_type)
+    elif algorithm_name == 'pso':
+        algorithm = PSO(problem, **pso_params_clas, executer=executer_type)
+        algorithm2 = PSO(problem2, **pso_params_tsp, executer=executer_type)
+    else:
+        raise ValueError(f"Unknown algorithm: {algorithm_name}")
         
     print(f"Starting {algorithm_name.upper()} Clas...")
 

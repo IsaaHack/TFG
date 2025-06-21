@@ -153,6 +153,64 @@ void fitness_omp(py::array_t<float> weights_np, py::array_t<float> X_train_np, p
 
 }
 
+py::array_t<int> predict(py::array_t<float> X_test_np, py::array_t<float> weights_np, 
+                         py::array_t<float> X_train_np, py::array_t<int> y_train_np) {
+    auto X_test = X_test_np.unchecked<2>();   // (n_test, d)
+    auto weights = weights_np.unchecked<1>(); // (d,)
+    auto X_train = X_train_np.unchecked<2>(); // (n_train, d)
+    auto y_train = y_train_np.unchecked<1>(); // (n_train,)
+
+    size_t n_test = X_test.shape(0);
+    size_t n_train = X_train.shape(0);
+    size_t d = X_test.shape(1);
+
+    // Selección de atributos por threshold (como en Python)
+    std::vector<size_t> selected_features;
+    for (size_t k = 0; k < d; ++k) {
+        if (weights(k) >= 0.1f) {
+            selected_features.push_back(k);
+        }
+    }
+
+    // Nueva dimensión
+    size_t d_selected = selected_features.size();
+
+    // Vector para predicciones
+    std::vector<int> predictions(n_test);
+
+    for (size_t i = 0; i < n_test; ++i) {
+        float min_dist = std::numeric_limits<float>::infinity();
+        int best_index = -1;
+
+        for (size_t j = 0; j < n_train; ++j) {
+            float dist = 0.0f;
+            for (size_t idx = 0; idx < d_selected; ++idx) {
+                size_t feature_idx = selected_features[idx];
+                float diff = X_test(i, feature_idx) - X_train(j, feature_idx);
+                // ponderar por sqrt(weight)² = weight
+                dist += weights(feature_idx) * diff * diff;
+            }
+            dist = std::sqrt(dist);
+
+            if (dist < min_dist) {
+                min_dist = dist;
+                best_index = j;
+            }
+        }
+
+        predictions[i] = y_train(best_index);
+    }
+
+    // Convertir a py::array_t<int> para retornar a Python
+    py::array_t<int> result(n_test);
+    auto result_mutable = result.mutable_unchecked<1>();
+    for (size_t i = 0; i < n_test; ++i) {
+        result_mutable(i) = predictions[i];
+    }
+
+    return result;
+}
+
 // Versión con punteros para integración con Numpy
 float fitness_tsp_cpp(const float* distances, const int* solution, int n) {
     float fitness_value = 0.0f;
@@ -673,6 +731,8 @@ PYBIND11_MODULE(utils, m) {
             py::arg("weights"), py::arg("X_train"), py::arg("y_train"));
     m.def("red_rate", &red_rate, "Calcula la tasa de reducción",
             py::arg("weights"));
+    m.def("predict", &predict, "Realiza predicciones basadas en el modelo",
+            py::arg("X_test"), py::arg("weights"), py::arg("X_train"), py::arg("y_train"));
     m.def("fitness_tsp", &fitness_tsp, "Calcula la función fitness para TSP",
             py::arg("distances"), py::arg("solution"));
     m.def("fitness_tsp_omp", &fitness_tsp_omp, "Calcula la función fitness para TSP usando OpenMP",

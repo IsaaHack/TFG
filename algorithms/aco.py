@@ -1,6 +1,8 @@
 from . import Algorithm
 import numpy as np
 from time import time
+from . import MESSAGE_TAG, FINISH_TAG
+import pickle, zlib
 
 class ACO(Algorithm):
     def __init__(self, problem, colony_size=50, evaporation_rate=0.1, alpha=1.0, beta=2.0, seed=None, reset_threshold=100, executer='single'):
@@ -142,7 +144,9 @@ class ACO(Algorithm):
                 best_fit = best_iteration_fit
                 no_improvement = 0
                 # Enviar el mejor resultado al siguiente proceso
-                comm.send((rank, best, best_fit), dest=sendto, tag=0)
+                data = (rank, best, best_fit)
+                data_serialized = zlib.compress(pickle.dumps(data), level=9)
+                comm.send(data_serialized, dest=sendto, tag=MESSAGE_TAG)
             else:
                 no_improvement += 1
 
@@ -158,21 +162,25 @@ class ACO(Algorithm):
                 no_improvement = 0
 
             # Recibir el mejor resultado del proceso receivefrom
-            hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
+            hay_mensaje = comm.Iprobe(source=receivefrom, tag=MESSAGE_TAG)
             while hay_mensaje:
-                rank_received, best_received, best_fit_received = comm.recv(source=receivefrom, tag=0)
+                rank_received, best_received, best_fit_received = pickle.loads(zlib.decompress(comm.recv(source=receivefrom, tag=MESSAGE_TAG)))
                 if best_fit_received > best_fit:
                     best = np.copy(best_received)
                     best_fit = best_fit_received
                 if rank_received != rank:
-                    comm.send((rank_received, best, best_fit), dest=sendto, tag=0)
-                hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
+                    data = (rank, best, best_fit)
+                    data_serialized = zlib.compress(pickle.dumps(data), level=9)
+                    comm.send(data_serialized, dest=sendto, tag=MESSAGE_TAG)
+                hay_mensaje = comm.Iprobe(source=receivefrom, tag=MESSAGE_TAG)
 
             iteration += 1
             self.print_update(best_fit, iteration)
 
         self.print_end()
 
-        comm.send((rank, best, best_fit), dest=sendto, tag=1)
+        data = (rank, best, best_fit)
+        data_serialized = zlib.compress(pickle.dumps(data), level=9)
+        comm.send(data_serialized, dest=sendto, tag=FINISH_TAG)
 
         return np.copy(best)

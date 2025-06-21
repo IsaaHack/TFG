@@ -2,7 +2,8 @@ from . import Executer
 import os
 import subprocess
 import numpy as np
-from mpi4py import MPI
+import pickle, zlib
+from time import sleep
 
 MESSAGE_TAG = 0
 FINISH_TAG = 1
@@ -41,37 +42,49 @@ class ClusterExecuter(Executer):
         if rank != 0 and size > 1:
             if self.n_algorithms == 1:
                 # Ejecutar un único problema con un único algoritmo
-                return self.algorithms.fit_mpi(comm, rank, timelimit, sendto, receivefrom, verbose=verbose)
+                return self.algorithms.fit_mpi(comm, rank, timelimit, sendto, receivefrom, verbose=False)
             else:
-                if size != self.n_algorithms:
+                if size-1 != self.n_algorithms:
                     raise ValueError("Number of algorithms must match the number of processes.")
                 # Ejecutar un único problema con múltiples algoritmos
-                return self.algorithms[rank].fit_mpi(comm, rank, timelimit, sendto, receivefrom, verbose=verbose)
+                return self.algorithms[rank-1].fit_mpi(comm, rank, timelimit, sendto, receivefrom, verbose=False)
         else:
+            from mpi4py import MPI
             best = None
             best_fit = -np.inf
             n_improvements_rank = np.zeros(size-1, dtype=int)
 
             end = False
+            end_number = 0
+
             while not end:
                 status = MPI.Status()
                 comm.probe(MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
 
                 source = status.source
-                message = comm.recv(source=source, tag=MESSAGE_TAG, status=status)
-                _, best_recieved, best_fit_recieved = message
+                message = comm.recv(source=source, tag=MPI.ANY_TAG, status=status)
+                _, best_recieved, best_fit_recieved = pickle.loads(zlib.decompress(message))
 
                 if best_fit_recieved > best_fit:
                     best = np.copy(best_recieved)
                     best_fit = best_fit_recieved
                     n_improvements_rank[source-1] += 1
+                    if verbose:
+                        print(f"New best from {source}: fitness = {best_fit}")
+                    # Enviar el mejor resultado a todos los procesos
+                    data = (rank, best, best_fit)
+                    data_serialized = zlib.compress(pickle.dumps(data), level=9)
+                    for i in range(1, size):
+                        # Serializar el mensaje para evitar problemas con tipos de datos complejos
+                        if i != source:
+                            comm.send(data_serialized, dest=i, tag=MESSAGE_TAG)
 
                 if status.tag == FINISH_TAG:
-                    end = True
-                else:
-                    # Enviar el mejor resultado a todos los procesos
-                    for i in range(1, size):
-                        comm.send((rank, best, best_fit), dest=i, tag=MESSAGE_TAG)
+                    end_number += 1
+                    print(f"Process {source} finished. Total finished: {end_number}/{size-1}")
+                    if end_number == size - 1:
+                        end = True
+                        print("All processes finished.")
 
             return np.copy(best)
 

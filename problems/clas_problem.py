@@ -2,6 +2,7 @@ from . import Problem
 from . import utils, utils_gpu
 import cupy as cp
 import numpy as np
+import scipy.spatial.distance as sp
 
 SQRT_03 = np.sqrt(0.3)
 MIN_STD = 1e-3
@@ -73,7 +74,7 @@ class ClasProblem(Problem):
         red_rate = 100 * cp.sum(~mask, axis=1) / self.n_features  # Tasa de reducción
 
         # Cálculo final del fitness
-        fitness_values = clas_rate * 0.75 + red_rate * 0.25
+        fitness_values = clas_rate * (1 - self.alpha) + red_rate * self.alpha
         return fitness_values.get()  # Convertir de cupy a numpy
     
     # def fitness_gpu2(self, solutions):
@@ -127,6 +128,26 @@ class ClasProblem(Problem):
     
     def red_rate(self, solution):
         return utils.red_rate(solution)
+    
+    def predict(self, X_test, solution):
+        # X = np.concatenate((self.X, X_test))
+
+        # weights_to_use = solution[solution >= 0.1]
+        # atributes_to_use = X[:, solution >= 0.1]
+
+        # #atributes_to_use = atributes_to_use * np.sqrt(weights_to_use)
+
+        # # equivalente a la distancia euclidea
+        # distances = sp.squareform(sp.pdist(atributes_to_use, 'minkowski', p=2, w=weights_to_use))
+        # distances[np.diag_indices(distances.shape[0])] = np.inf
+
+        # distances = distances[self.X.shape[0]:, :self.X.shape[0]]
+        # index_predictions = np.argmin(distances, axis=1)
+        # predictions_labels = self.Y[index_predictions]
+
+        # return predictions_labels
+
+        return utils.predict(X_test, solution, self.X, self.Y)
     
     def crossover(self, population, crossover_rate, alpha: float = 0.3):
         n_pairs = int(np.floor(crossover_rate * len(population) / 2))
@@ -228,7 +249,6 @@ class ClasProblem(Problem):
         new_stds = np.clip(new_stds, MIN_STD, MAX_STD)
 
         return new_means, new_stds
-
     
     def reset_pheromones(self, pheromones):
         pheromones = self.initialize_pheromones()

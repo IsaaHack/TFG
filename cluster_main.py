@@ -1,27 +1,43 @@
 import argparse
 from executers import cluster_execute_run
 
-def main():
+def main(problem='tsp', problem_file='datasets/TSP/berlin52.tsp', nodes=None, executer='gpu', timelimit=60):
+    if problem == 'tsp':
+        filename = 'cluster_tsp.py'
+    elif problem == 'clas':
+        filename = 'cluster_clas.py'
+    else:
+        raise ValueError(f"Unsupported problem type: {problem}. Supported types are 'tsp' and 'clas'.")
+    
+    if executer not in ['single', 'multi', 'gpu', 'hybrid']:
+        raise ValueError(f"Unsupported executer type: {executer}. Supported types are 'single', 'multi', 'gpu', and 'hybrid'.")
+    
+    if timelimit <= 0:
+        raise ValueError(f"Invalid timelimit: {timelimit}. It must be a positive integer.")
+
+    program_args = problem_file.split() if problem_file else []
+    program_args += ['-e', executer, '-t', str(timelimit)]
+
+    if nodes is None:
+        nodes = ['compute5', 'compute2', 'compute3', 'compute4']
+
+    print(f"Running {filename} on nodes: {nodes} with problem file: {problem_file}")
+
+    cluster_execute_run(filename, nodes, program_args)
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Run a cluster script'
     )
     parser.add_argument('-p', '--problem', type=str, default='tsp', help='Problem to solve (default: tsp)')
     parser.add_argument('-pf', '--problem_file', type=str, default='datasets/TSP/berlin52.tsp', help='Problem file path (default: data/berlin52.tsp)')
+    parser.add_argument('-n', '--nodes', type=str, nargs='+', default=['compute5', 'compute2', 'compute3', 'compute4'], help='Nodes to run the script on (default: compute5 compute2 compute3 compute4)')
+    parser.add_argument('-e', '--executer', type=str, default='gpu', choices=['single', 'multi', 'gpu', 'hybrid'], help='Execution type: single, multi, gpu, or hybrid (default: gpu)')
+    parser.add_argument('-t', '--timelimit', type=int, default=60, help='Time limit for the algorithm in seconds (default: 60)')
 
     args = parser.parse_args()
-    if args.problem == 'tsp':
-        filename = 'cluster_tsp.py'
-    elif args.problem == 'clas':
-        filename = 'cluster_clas.py'
-    else:
-        raise ValueError(f"Unsupported problem type: {args.problem}. Supported types are 'tsp' and 'clas'.")
-
-    program_args = args.problem_file.split() if args.problem_file else []
-    nodes = ['compute2', 'compute3', 'compute4']
-
-    print(f"Running {filename} on nodes: {nodes} with problem file: {args.problem_file}")
-
-    cluster_execute_run(filename, nodes, program_args)
-
-if __name__ == "__main__":
-    main()
+    main(problem=args.problem, 
+         problem_file=args.problem_file, 
+         nodes=args.nodes, 
+         executer=args.executer, 
+         timelimit=args.timelimit)

@@ -1,10 +1,11 @@
 from . import Algorithm
 import numpy as np
 from time import time
-import cupy as c
+from . import MESSAGE_TAG, FINISH_TAG
+import pickle, zlib
 
 class PSO(Algorithm):
-    def __init__(self, problem, swarm_size=100, inertia_weight=0.5, cognitive_weight=1.0, social_weight=1.0, seed=None, executer='single'):
+    def __init__(self, problem, swarm_size=100, inertia_weight=0.5, cognitive_weight=1.0, social_weight=1.0, seed=None, executer='single', reset_threshold=100):
         # Se definen los métodos requeridos que el problema debe implementar.
         required_methods = ['fitness', 'generate_solution', 'update_velocity', 'update_position']
         super().__init__(problem, required_methods, executer)
@@ -52,6 +53,7 @@ class PSO(Algorithm):
         inertia = self.inertia_weight
 
         iteration = 1
+        no_improvement = 0
         
         self.print_update(g_best_fitness)
 
@@ -62,7 +64,7 @@ class PSO(Algorithm):
             # Actualizar velocidad y posición usando métodos del problema
             velocity = self.problem.update_velocity(swarm, velocity, p_best, g_best,
                                                     inertia, self.cognitive_weight, self.social_weight)
-            self.problem.update_position(swarm, velocity)
+            swarm = self.problem.update_position(swarm, velocity)
 
             # Evaluar fitness
             fitness = self.executer.execute(swarm)
@@ -78,9 +80,31 @@ class PSO(Algorithm):
             if current_best_fitness > g_best_fitness:
                 g_best = np.copy(p_best[current_best_idx])
                 g_best_fitness = current_best_fitness
+                no_improvement = 0  # Reiniciar contador de no mejoras
+            else:
+                no_improvement += 1
+
+            if no_improvement >= 100:  # Si no hay mejoras en 100 iteraciones, reiniciar el enjambre
+                swarm = self.problem.generate_solution(self.swarm_size)
+                velocity = self.problem.generate_velocity(self.swarm_size)
+                
+                swarm[0] = np.copy(g_best)  # Mantener el mejor global en la primera posición
+                fitness[0] = g_best_fitness  # Mantener su fitness
+                fitness[1:] = self.executer.execute(swarm[1:])  # Evaluar el resto del enjambre
+
+                p_best = np.copy(swarm)
+                p_best_fitness = np.copy(fitness)
+
+                g_best_idx = np.argmax(p_best_fitness)
+                g_best = np.copy(p_best[g_best_idx])
+                g_best_fitness = p_best_fitness[g_best_idx]
+
+                no_improvement = 0  # Reiniciar contador de no mejoras
 
             iteration += 1
             self.print_update(g_best_fitness)
+
+
 
         self.print_end()
         return np.copy(g_best)
@@ -122,7 +146,7 @@ class PSO(Algorithm):
             # Actualizar velocidad y posición usando métodos del problema
             velocity = self.problem.update_velocity(swarm, velocity, p_best, g_best,
                                                     inertia, self.cognitive_weight, self.social_weight)
-            self.problem.update_position(swarm, velocity)
+            swarm = self.problem.update_position(swarm, velocity)
 
             # Evaluar fitness
             fitness = self.executer.execute(swarm)
@@ -139,18 +163,21 @@ class PSO(Algorithm):
                 g_best = np.copy(p_best[current_best_idx])
                 g_best_fitness = current_best_fitness
                 # Enviar el mejor resultado al siguiente proceso
-                comm.send((rank, g_best, g_best_fitness), dest=sendto, tag=0)
+                data = (rank, g_best, g_best_fitness)
+                data_serialized = zlib.compress(pickle.dumps(data), level=9)
+                comm.send(data_serialized, dest=sendto, tag=MESSAGE_TAG)
 
             # Recibir el mejor resultado del proceso recievefrom
-            hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
+            hay_mensaje = comm.Iprobe(source=receivefrom, tag=MESSAGE_TAG)
             while hay_mensaje:
-                rank_received, best_received, best_fit_received = comm.recv(source=receivefrom, tag=0)
+                rank_received, best_received, best_fit_received = pickle.loads(zlib.decompress(comm.recv(source=receivefrom, tag=MESSAGE_TAG)))
                 if best_fit_received > g_best_fitness:
                     g_best = np.copy(best_received)
                     g_best_fitness = best_fit_received
                 if rank_received != rank:
-                    comm.send((rank_received, g_best, g_best_fitness), dest=sendto, tag=0)
-                hay_mensaje = comm.Iprobe(source=receivefrom, tag=0)
+                    data = (rank_received, g_best, g_best_fitness)
+                    data_serialized = zlib.compress(pickle.dumps(data), level=9)
+                hay_mensaje = comm.Iprobe(source=receivefrom, tag=MESSAGE_TAG)
 
             iteration += 1
             
@@ -158,6 +185,8 @@ class PSO(Algorithm):
 
         self.print_end()
 
-        comm.send((rank, g_best, g_best_fitness), dest=sendto, tag=1)
+        data = (rank, g_best, g_best_fitness)
+        data_serialized = zlib.compress(pickle.dumps(data), level=9)
+        comm.send(data_serialized, dest=sendto, tag=FINISH_TAG)
         
         return np.copy(g_best)

@@ -5,6 +5,9 @@ import tqdm
 import numpy as np
 import cupy as cp
 
+MESSAGE_TAG = 0
+FINISH_TAG = 1
+
 class Algorithm(ABC):
     def __init__(self, problem, required_methods, executer_type='hybrid', executer=None):
         self.problem = problem
