@@ -2,6 +2,7 @@ from . import Problem
 from . import utils, utils_gpu
 import cupy as cp
 import numpy as np
+import numba
 
 # Raw kernel source
 _raw_kernel_code = r"""
@@ -101,13 +102,32 @@ two_opt_kernel = cp.RawKernel(two_opt_kernel_src, 'two_opt_kernel')
 constructor_kernel_tsp = cp.RawKernel(_raw_kernel_code, 'construct_kernels')
 
 class TSPProblem(Problem):
-    def __init__(self, distances):
+    def __init__(self, distances, executer='gpu'):
         self.distances_gpu = cp.asarray(distances, dtype=cp.float32, order='C')
         self.distances_gpu = cp.ascontiguousarray(self.distances_gpu)
         self.distances = distances
         self.n_cities = len(distances)
+        self.execution = executer
 
         cp.cuda.Device().synchronize()
+
+        if executer not in ['single', 'multi', 'gpu']:
+            raise ValueError(f"Unsupported execution type: {executer}. Supported types are 'single', 'multi', 'gpu'.")
+
+        if executer == 'single':
+            self.crossover = self.crossover_cpu
+            self.construct_solutions = self.construct_solutions_cpu
+            self.initialize_pheromones = self.initialize_pheromones_cpu
+            self.update_pheromones = self.update_pheromones_cpu
+            self.reset_pheromones = self.reset_pheromones_cpu
+            self.update_velocity = self.update_velocity_cpu
+            self.update_position = self.update_position_cpu
+        elif executer == 'multi':
+            self.construct_solutions = self.construct_solutions_cpu_multi
+            self.initialize_pheromones = self.initialize_pheromones_cpu
+            self.update_pheromones = self.update_pheromones_cpu
+            self.reset_pheromones = self.reset_pheromones_cpu
+            self.update_position = self.update_position_cpu_multi
 
     def generate_solution(self, num_samples=1):
         if num_samples == 1:
@@ -137,22 +157,6 @@ class TSPProblem(Problem):
         utils.fitness_tsp_omp(self.distances, solutions, fitness_value)
 
         return fitness_value[0] if len(solutions.shape) == 1 else fitness_value
-    
-    def fitness_gpu2(self, solutions):
-        # Convertir a array de CuPy una sola vez
-        solutions_gpu = cp.asarray(solutions, dtype=cp.int32)
-        
-        # Crear versión desplazada de las rutas (para calcular siguiente ciudad)
-        shifted = cp.roll(solutions_gpu, shift=-1, axis=1)
-        
-        # Calcular todas las distancias entre ciudades consecutivas simultáneamente
-        distances = self.distances_gpu[solutions_gpu, shifted]
-        
-        # Sumar las distancias por ruta (axis=1)
-        total_distances = cp.sum(distances, axis=1)
-        
-        # Fitness = negativo de la distancia total
-        return (-total_distances).get()
     
     def fitness_gpu(self, solutions):
         unique = False
@@ -210,7 +214,7 @@ class TSPProblem(Problem):
 
         return utils.crossover_tsp(population, start, end)
     
-    def crossover2(self, population, crossover_rate):
+    def crossover_cpu(self, population, crossover_rate):
         num_crossovers = int(np.floor(crossover_rate * len(population) / 2))
         n_cities = self.n_cities
         in_segment = np.zeros(n_cities, dtype=bool)  # Preallocate boolean array for reuse
@@ -250,24 +254,6 @@ class TSPProblem(Problem):
             population[parent2] = child2
 
         return population
-    
-    def mutation2(self, population, mutation_rate):
-        n_individuals = population.shape[0]
-        estimated_mutations = int(mutation_rate * n_individuals)
-        if estimated_mutations == 0:
-            return
-        
-        # Seleccionar aleatoriamente los índices de individuos a mutar sin repetición
-        individual_indices = np.random.choice(n_individuals, size=estimated_mutations, replace=False)
-
-        # Generar índices para swap mutation:
-        # Primer índice aleatorio
-        indices1 = np.random.randint(0, self.n_cities, size=estimated_mutations)
-        # Segundo índice: primero se genera un entero en [0, n_cities-1) y luego se ajusta:
-        indices2 = np.random.randint(0, self.n_cities - 1, size=estimated_mutations)
-        indices2 = np.where(indices2 >= indices1, indices2 + 1, indices2)
-
-        return utils.mutation_tsp(population, individual_indices, indices1, indices2)
 
     def mutation(self, population, mutation_rate):
         n_individuals = population.shape[0]
@@ -291,179 +277,15 @@ class TSPProblem(Problem):
         population[individual_indices, indices1] = population[individual_indices, indices2]
         population[individual_indices, indices2] = temp
 
-        # for i in range(population.shape[0]):
-        #     population[i] = self.two_opt(population[i], self.distances)
-        
-        # Swap mutation
-        # population[i][index1] = np.random.randint(self.n_cities)
-        # population[i][index2] = np.random.randint(self.n_cities)
-        # Inversion mutation
-        # start, end = sorted(np.random.choice(self.n_cities, size=2, replace=False))
-        # population[i][start:end+1] = population[i][start:end+1][::-1]
-        # Scramble mutation
-        # start, end = sorted(np.random.choice(self.n_cities, size=2, replace=False))
-        # temp = population[i][start:end+1].copy()
-        # np.random.shuffle(temp)
-        # population[i][start:end+1] = temp
-
     def initialize_pheromones(self):
         pheromones = cp.random.uniform(1/(self.n_cities*self.n_cities), 1/self.n_cities, (self.n_cities, self.n_cities), dtype=cp.float32)
         cp.fill_diagonal(pheromones, 0.0)  # Evitar feromonas en la diagonal
         return pheromones
     
-    def construct_solutions2(self, colony_size, pheromones, alpha, beta):
-        # Inicializar el arreglo de soluciones y el seguimiento de ciudades visitadas.
-        solutions = np.empty((colony_size, self.n_cities), dtype=np.int32)
-        # Seleccionar aleatoriamente la ciudad inicial para cada hormiga.
-        # Se asume colony_size <= self.n_cities. Si no fuera el caso, se puede modificar la selección.
-        solutions[:, 0] = np.random.choice(self.n_cities, colony_size, replace=False)
-        visited = np.zeros((colony_size, self.n_cities), dtype=bool)
-        visited[np.arange(colony_size), solutions[:, 0]] = True
-
-        for step in range(1, self.n_cities):
-            # La ciudad actual de cada hormiga
-            current_cities = solutions[:, step - 1]
-            
-            # Extraer de forma vectorizada la feromona y la distancia para cada solución
-            pheromone = np.power(pheromones[current_cities, :], alpha)  # (colony_size, n_cities)
-            distance_segment = self.distances[current_cities, :].copy()  # (colony_size, n_cities)
-            # Evitar división por cero en la diagonal (misma ciudad)
-            distance_segment[distance_segment == 0] = 1e-10
-            heuristic = np.power(1.0 / distance_segment, beta)
-            
-            # Calcular la probabilidad sin normalizar
-            probabilities = pheromone * heuristic
-            
-            # Enmascarar las ciudades ya visitadas (asigna 0 a las posiciones ya visitadas)
-            probabilities[visited] = 0.0
-            
-            # Manejo de filas con suma cero
-            row_sums = probabilities.sum(axis=1)
-            zero_rows = row_sums == 0
-            if np.any(zero_rows):
-                for idx in np.where(zero_rows)[0]:
-                    unvisited = ~visited[idx]
-                    probabilities[idx, unvisited] = 1.0 / np.count_nonzero(unvisited)
-                row_sums = probabilities.sum(axis=1)
-            
-            # Normalizar las probabilidades
-            probabilities = probabilities / row_sums[:, np.newaxis]
-            
-            # Selección vectorizada de la siguiente ciudad usando cumsum.
-            cumulative_probs = np.cumsum(probabilities, axis=1)
-            random_nums = np.random.rand(colony_size, 1)  # Una muestra por cada hormiga
-            # Para cada hormiga se elige el índice (ciudad) donde el valor acumulado supera el número aleatorio.
-            next_cities = (cumulative_probs >= random_nums).argmax(axis=1)
-            
-            solutions[:, step] = next_cities
-            visited[np.arange(colony_size), next_cities] = True
-
-        return solutions
-    
-    def construct_solutions3(self, colony_size, pheromones, alpha, beta):
-        n_cities = self.n_cities
-        solutions = np.empty((colony_size, n_cities), dtype=np.int32)
-        solutions[:, 0] = np.random.choice(n_cities, colony_size, replace=False)
-        
-        # Precomputación de matrices (solo una vez)
-        if not hasattr(self, 'heuristic_matrix'):
-            inv_dist = np.divide(1.0, self.distances, 
-                            out=np.full_like(self.distances, 1e10, dtype=np.float64),
-                            where=self.distances != 0)
-            self.heuristic_matrix = np.power(inv_dist, beta, dtype=np.float64)
-        
-        # Buffers preasignados
-        visited = np.zeros((colony_size, n_cities), dtype=np.uint8)
-        visited[np.arange(colony_size), solutions[:, 0]] = 1
-        prob_buffer = np.zeros((colony_size, n_cities), dtype=np.float64)
-        cum_buffer = np.zeros_like(prob_buffer)
-        
-        # Máscaras y constantes
-        #ones = np.ones((colony_size, 1), dtype=np.float32)
-        epsilon = np.finfo(np.float64).eps
-        
-        for step in range(1, n_cities):
-            current = solutions[:, step-1]
-            
-            # Cálculo vectorizado sin loops
-            np.power(pheromones[current], alpha, out=prob_buffer)
-            prob_buffer *= self.heuristic_matrix[current]
-            np.multiply(prob_buffer, 1 - visited, out=prob_buffer)
-            
-            # Manejo de ceros con operaciones matriciales
-            row_sums = prob_buffer.sum(axis=1, keepdims=True)
-            np.divide(prob_buffer, row_sums + epsilon, out=prob_buffer, where=row_sums > 0)
-            np.multiply(prob_buffer, (row_sums > 0).astype(np.float64), out=prob_buffer)
-            
-            # Selección por búsqueda binaria vectorizada
-            np.cumsum(prob_buffer, axis=1, out=cum_buffer)
-            rand = np.random.rand(colony_size, 1).astype(np.float64)
-            next_cities = (cum_buffer >= rand).argmax(axis=1)
-            
-            # Actualización sin loops usando índices mágicos
-            idx = np.arange(colony_size)
-            solutions[:, step] = next_cities
-            visited[idx, next_cities] = 1
-
-        return solutions
-    
-    def construct_solutions4(self, colony_size, pheromones, alpha, beta, out=None):
-        n_cities = self.n_cities
-        if out is not None:
-            solutions = out
-        else:
-            solutions = np.empty((colony_size, n_cities), dtype=np.int32)
-        solutions[:, 0] = np.random.choice(n_cities, colony_size, replace=False)
-        
-        # Precompute heuristic_matrix with current beta, checking for changes
-        if not hasattr(self, 'heuristic_beta') or self.heuristic_beta != beta:
-            inv_dist = np.divide(1.0, self.distances, 
-                            out=np.full_like(self.distances, 1e10, dtype=np.float64),
-                            where=self.distances != 0)
-            if beta == 1:
-                self.heuristic_matrix = inv_dist
-            else:
-                self.heuristic_matrix = np.power(inv_dist, beta, dtype=np.float64)
-            self.heuristic_beta = beta  # Track the beta used
-        
-        # Buffers preallocados
-        visited = np.zeros((colony_size, n_cities), dtype=np.uint8)
-        visited[np.arange(colony_size), solutions[:, 0]] = 1
-        prob_buffer = np.zeros((colony_size, n_cities), dtype=np.float64)
-        cum_buffer = np.zeros_like(prob_buffer)
-        mask_buffer = np.zeros_like(prob_buffer)  # Para (1 - visited) como float64
-        epsilon = np.finfo(np.float64).eps
-        
-        # Precalcular todos los números aleatorios
-        rand_matrix = np.random.rand(colony_size, n_cities - 1)
-        
-        for step in range(1, n_cities):
-            current = solutions[:, step-1]
-            rand = rand_matrix[:, step-1].reshape(-1, 1)  # Formato (colony_size, 1)
-            
-            # Calcular prob_buffer
-            current_pheromones = pheromones[current]
-            np.power(current_pheromones, alpha, out=prob_buffer)
-            prob_buffer *= self.heuristic_matrix[current]
-            
-            # Aplicar máscara usando buffer preasignado
-            np.subtract(1, visited, out=mask_buffer)
-            prob_buffer *= mask_buffer
-            
-            # Normalizar
-            row_sums = prob_buffer.sum(axis=1, keepdims=True)
-            np.divide(prob_buffer, row_sums + epsilon, out=prob_buffer, where=row_sums > 0)
-            np.multiply(prob_buffer, (row_sums > 0).astype(np.float64), out=prob_buffer)
-            
-            # Seleccionar siguiente ciudad
-            np.cumsum(prob_buffer, axis=1, out=cum_buffer)
-            next_cities = (cum_buffer >= rand).argmax(axis=1)
-            
-            # Actualizar soluciones y visitados
-            solutions[:, step] = next_cities
-            visited[np.arange(colony_size), next_cities] = 1
-
-        return solutions
+    def initialize_pheromones_cpu(self):
+        pheromones = np.random.uniform(1/(self.n_cities*self.n_cities), 1/self.n_cities, (self.n_cities, self.n_cities))
+        np.fill_diagonal(pheromones, 0.0)  # Evitar feromonas en la diagonal
+        return pheromones
     
     def construct_solutions(self, colony_size, pheromones, alpha, beta, out=None):
         n = self.n_cities
@@ -518,7 +340,7 @@ class TSPProblem(Problem):
             return out
         return cp.asnumpy(gpu_solutions)
     
-    def construct_solutions777(self, colony_size, pheromones, alpha, beta, out=None):
+    def construct_solutions_cpu(self, colony_size, pheromones, alpha, beta, out=None):
         rng = np.random.default_rng(seed=np.random.randint(0, 2**32 - 1))
 
         if out is not None:
@@ -545,12 +367,49 @@ class TSPProblem(Problem):
         # Precalcular todos los números aleatorios
         rand_matrix = rng.random((colony_size, self.n_cities - 1))
 
-        pheromones_np = pheromones.get()
+        utils.construct_solutions_tsp_inner_cpu(
+            solutions,
+            visited,
+            pheromones,
+            self.heuristic_matrix,
+            rand_matrix,
+            colony_size,
+            self.n_cities,
+            alpha,
+            np.finfo(np.float64).eps
+        )
+    
+    def construct_solutions_cpu_multi(self, colony_size, pheromones, alpha, beta, out=None):
+        rng = np.random.default_rng(seed=np.random.randint(0, 2**32 - 1))
+
+        if out is not None:
+            solutions = out
+        else:
+            solutions = np.empty((colony_size, self.n_cities), dtype=np.int32)
+
+        solutions[:, 0] = rng.choice(self.n_cities, colony_size)
+        
+        # Precompute heuristic_matrix with current beta, checking for changes
+        if not hasattr(self, 'heuristic_beta') or self.heuristic_beta != beta:
+            inv_dist = np.divide(1.0, self.distances, 
+                            out=np.full_like(self.distances, 1e10, dtype=np.float64),
+                            where=self.distances != 0)
+            if beta == 1:
+                self.heuristic_matrix = inv_dist
+            else:
+                self.heuristic_matrix = np.power(inv_dist, beta, dtype=np.float64)
+            self.heuristic_beta = beta  # Track the beta used
+        
+        visited = np.zeros((colony_size, self.n_cities), dtype=np.uint8)
+        visited[np.arange(colony_size), solutions[:, 0]] = 1
+        
+        # Precalcular todos los números aleatorios
+        rand_matrix = rng.random((colony_size, self.n_cities - 1))
 
         utils.construct_solutions_tsp_inner(
             solutions,
             visited,
-            pheromones_np,
+            pheromones,
             self.heuristic_matrix,
             rand_matrix,
             colony_size,
@@ -580,7 +439,7 @@ class TSPProblem(Problem):
         
         return pheromones
     
-    def update_pheromones2(self, pheromones, colony, fitness_values, evaporation_rate):
+    def update_pheromones_cpu(self, pheromones, colony, fitness_values, evaporation_rate):
         return utils.update_pheromones_tsp(
             pheromones,
             colony,
@@ -591,6 +450,11 @@ class TSPProblem(Problem):
     def reset_pheromones(self, pheromones):
         pheromones = cp.random.uniform(1/(self.n_cities*self.n_cities), 1/self.n_cities, (self.n_cities, self.n_cities), dtype=cp.float32)
         cp.fill_diagonal(pheromones, 0.0)
+        return pheromones
+    
+    def reset_pheromones_cpu(self, pheromones):
+        pheromones = np.random.uniform(1/(self.n_cities*self.n_cities), 1/self.n_cities, (self.n_cities, self.n_cities))
+        np.fill_diagonal(pheromones, 0.0)
         return pheromones
     
     def generate_velocity(self, num_samples=1):
@@ -608,6 +472,7 @@ class TSPProblem(Problem):
         return velocities
     
     @staticmethod
+    @numba.jit(nopython=True)
     def _get_swap_sequence(from_tour, to_tour):
         seq = []
         ft = from_tour.copy()
@@ -653,8 +518,37 @@ class TSPProblem(Problem):
 
         return new_velocity
     
+    def update_velocity_cpu(self, swarm, velocity, p_best, g_best, inertia_weight, cognitive_weight, social_weight):
+        new_velocity = []
+
+        max_swaps = np.maximum(2, int(self.n_cities**0.5))  # Límite basado en sqrt(n)
+        for i, tour in enumerate(swarm):
+            # Componente de inercia: parte de la velocidad anterior
+            inertia_count = int(inertia_weight * len(velocity[i]))
+            vel_inertia = velocity[i][:inertia_count]  # Tomar primeros 'inertia_count' intercambios
+            
+            # Componente cognitivo: intercambios hacia p_best[i]
+            swaps_cog = self.get_swap_sequence(tour, p_best[i])
+            k1 = int(cognitive_weight * len(swaps_cog))
+            vel_cognitive = swaps_cog[:k1]
+            
+            # Componente social: intercambios hacia g_best
+            swaps_soc = self.get_swap_sequence(tour, g_best)
+            k2 = int(social_weight * len(swaps_soc))
+            vel_social = swaps_soc[:k2]
+            
+            # Combinar componentes
+            combined = vel_inertia + vel_cognitive + vel_social
+            combined = list(set(combined))  # Eliminar duplicados
+            np.random.shuffle(combined)
+            new_velocity.append(combined[:np.minimum(len(combined), max_swaps)])
+            #new_velocity.append(combined)
+
+        return new_velocity
+    
     @staticmethod
-    def two_opt(tours, distances):
+    @numba.jit(nopython=True)
+    def two_opt_cpu(tours, distances):
         for tour in tours:
             n = tour.size
             improved = False
@@ -683,7 +577,7 @@ class TSPProblem(Problem):
         return tours
     
     @staticmethod
-    def two_opt_gpu(tours, distances):
+    def two_opt(tours, distances):
         tours_gpu = cp.asarray(tours, dtype=cp.int32,   order='C')
 
         num_tours, n = tours_gpu.shape
@@ -708,7 +602,28 @@ class TSPProblem(Problem):
             for a, b in swaps:
                 tour[a], tour[b] = tour[b], tour[a]
         
-        swarm = self.two_opt_gpu(swarm, self.distances_gpu)
-        #utils.two_opt(swarm, self.distances)
+        swarm = self.two_opt(swarm, self.distances_gpu)
+
+        return swarm
+    
+    def update_position_cpu(self, swarm, velocity):
+        # Aplica cada swap de la velocidad sobre el tour
+        for i, swaps in enumerate(velocity):
+            tour = swarm[i]
+            for a, b in swaps:
+                tour[a], tour[b] = tour[b], tour[a]
+        
+        swarm = self.two_opt_cpu(swarm, self.distances)
+
+        return swarm
+    
+    def update_position_cpu_multi(self, swarm, velocity):
+        # Aplica cada swap de la velocidad sobre el tour
+        for i, swaps in enumerate(velocity):
+            tour = swarm[i]
+            for a, b in swaps:
+                tour[a], tour[b] = tour[b], tour[a]
+        
+        swarm = utils.two_opt(swarm, self.distances)
 
         return swarm

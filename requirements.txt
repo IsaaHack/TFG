@@ -6,3 +6,4 @@ pybind11
 mpi4py
 cupy-cuda12
 pandas
+numba

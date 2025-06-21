@@ -12,17 +12,18 @@ namespace py = pybind11;
 using namespace std;
 
 // Definición de constantes
-const float CLASS_WEIGHT = 0.75f;
-const float RED_WEIGHT = 0.25f;
-const float THRESHOLD = 0.1f;
+//const float CLASS_WEIGHT = 0.75f;
+//const float RED_WEIGHT = 0.25f;
+//const float THRESHOLD = 0.1f;
 
-float clas_rate_cpp(const float* weights, size_t w_size, const float* X_train, size_t n, size_t d, const int* y_train) {
+float clas_rate_cpp(const float* weights, size_t w_size, const float* X_train, size_t n, size_t d, const int* y_train, 
+                    const float threshold) {
     vector<float> weights_to_use;
     
     vector<int> valid_indices;
 
     for (size_t j = 0; j < w_size; ++j) {
-        if (weights[j] >= THRESHOLD) {
+        if (weights[j] >= threshold) {
             weights_to_use.push_back(weights[j]);
             valid_indices.push_back(j);
         }
@@ -74,7 +75,7 @@ float clas_rate_cpp(const float* weights, size_t w_size, const float* X_train, s
     return 100.0f * correct / n;
 }
 
-float clas_rate(py::array_t<float> weights_np, py::array_t<float> X_train_np, py::array_t<int> y_train_np) {
+float clas_rate(py::array_t<float> weights_np, py::array_t<float> X_train_np, py::array_t<int> y_train_np, const float threshold) {
     auto weights = weights_np.unchecked<1>();
     auto X_train = X_train_np.unchecked<2>();
     auto y_train = y_train_np.unchecked<1>();
@@ -83,27 +84,27 @@ float clas_rate(py::array_t<float> weights_np, py::array_t<float> X_train_np, py
     size_t n = X_train.shape(0);
     size_t d = X_train.shape(1);
 
-    return clas_rate_cpp(weights.data(0), w_size, X_train.data(0, 0), n, d, y_train.data(0));
+    return clas_rate_cpp(weights.data(0), w_size, X_train.data(0, 0), n, d, y_train.data(0), threshold);
 }
 
-float red_rate_cpp(const float* weights, size_t w_size) {
+float red_rate_cpp(const float* weights, size_t w_size, const float threshold) {
     using namespace std;
     size_t count = 0;
     for (size_t i = 0; i < w_size; ++i) {
-        if (weights[i] < 0.1f) {
+        if (weights[i] < threshold) {
             ++count;
         }
     }
     return 100.0f * count / w_size;
 }
 
-float red_rate(py::array_t<float> weights_np) {
+float red_rate(py::array_t<float> weights_np, const float threshold) {
     auto weights = weights_np.unchecked<1>();
     size_t w_size = weights.shape(0);
-    return red_rate_cpp(weights.data(0), w_size);
+    return red_rate_cpp(weights.data(0), w_size, threshold);
 }
 
-float fitness(py::array_t<float> weights_np, py::array_t<float> X_train_np, py::array_t<int> y_train_np) {
+float fitness(py::array_t<float> weights_np, py::array_t<float> X_train_np, py::array_t<int> y_train_np, const float alpha, const float threshold) {
     using namespace std;
     auto weights = weights_np.unchecked<1>();
     auto X_train = X_train_np.unchecked<2>();
@@ -113,25 +114,25 @@ float fitness(py::array_t<float> weights_np, py::array_t<float> X_train_np, py::
     size_t n = X_train.shape(0);
     size_t d = X_train.shape(1);
 
-    float clas = clas_rate_cpp(weights.data(0), w_size, X_train.data(0, 0), n, d, y_train.data(0));
-    float red = red_rate_cpp(weights.data(0), w_size);
+    float clas = clas_rate_cpp(weights.data(0), w_size, X_train.data(0, 0), n, d, y_train.data(0), threshold);
+    float red = red_rate_cpp(weights.data(0), w_size, threshold);
 
-    return CLASS_WEIGHT * clas + RED_WEIGHT * red;
+    return alpha * clas + (1-alpha) * red;
 }
 
 void fitness_omp_cpp(const float* weights, const float* X_train, const int* y_train, float *fitness_values,
-                  size_t n_sol, size_t n, size_t d, size_t w_size) {
-    #pragma omp parallel for default(none) shared(weights, X_train, y_train, fitness_values, n_sol, n, d, w_size)
+                  size_t n_sol, size_t n, size_t d, size_t w_size, const float alpha, const float threshold) {
+    #pragma omp parallel for default(none) shared(weights, X_train, y_train, fitness_values, n_sol, n, d, w_size, alpha, threshold)
     for (size_t i = 0; i < n_sol; ++i) {
-        float clas = clas_rate_cpp(&weights[i * w_size], w_size, X_train, n, d, y_train);
-        float red = red_rate_cpp(&weights[i * w_size], w_size);
+        float clas = clas_rate_cpp(&weights[i * w_size], w_size, X_train, n, d, y_train, threshold);
+        float red = red_rate_cpp(&weights[i * w_size], w_size, threshold);
 
-        fitness_values[i] = CLASS_WEIGHT * clas + RED_WEIGHT * red;
+        fitness_values[i] = alpha * clas + (1 - alpha) * red;
     }
 }
 
 void fitness_omp(py::array_t<float> weights_np, py::array_t<float> X_train_np, py::array_t<int> y_train_np,
-                 py::array_t<float> fitness_values_np) {
+                 py::array_t<float> fitness_values_np, const float alpha, const float threshold) {
 
     auto weights_info = weights_np.request();
     auto X_train_info = X_train_np.request();
@@ -149,12 +150,14 @@ void fitness_omp(py::array_t<float> weights_np, py::array_t<float> X_train_np, p
     auto fitness_values = static_cast<float *>(fitness_values_info.ptr);
 
     fitness_omp_cpp(weights_ptr, X_train_ptr, y_train_ptr, fitness_values,
-                  n_sol, n, d, w_size);
+                  n_sol, n, d, w_size, alpha, threshold);
 
 }
 
 py::array_t<int> predict(py::array_t<float> X_test_np, py::array_t<float> weights_np, 
-                         py::array_t<float> X_train_np, py::array_t<int> y_train_np) {
+                         py::array_t<float> X_train_np, py::array_t<int> y_train_np,
+                         const float threshold) 
+                         {
     auto X_test = X_test_np.unchecked<2>();   // (n_test, d)
     auto weights = weights_np.unchecked<1>(); // (d,)
     auto X_train = X_train_np.unchecked<2>(); // (n_train, d)
@@ -167,7 +170,7 @@ py::array_t<int> predict(py::array_t<float> X_test_np, py::array_t<float> weight
     // Selección de atributos por threshold (como en Python)
     std::vector<size_t> selected_features;
     for (size_t k = 0; k < d; ++k) {
-        if (weights(k) >= 0.1f) {
+        if (weights(k) >= threshold) {
             selected_features.push_back(k);
         }
     }
@@ -272,56 +275,6 @@ void fitness_tsp_omp(py::array_t<float> distances,
     float *fit_ptr = static_cast<float *>(fit_info.ptr);
 
     fitness_tsp_omp_cpp(dist_ptr, sol_ptr, fit_ptr, n_sol, n_cities);
-}
-
-void crossover_blx(
-    py::array_t<float> population,
-    py::array_t<int> pairs_even_idx,
-    py::array_t<int> pairs_odd_idx,
-    py::array_t<float> rand_uniform1,
-    py::array_t<float> rand_uniform2,
-    float alpha
-) {
-    auto pop_info = population.request();
-    auto even_info = pairs_even_idx.request();
-    auto odd_info = pairs_odd_idx.request();
-    auto rand1_info = rand_uniform1.request();
-    auto rand2_info = rand_uniform2.request();
-
-    int n_pairs = even_info.size;
-    int n_vars = pop_info.shape[1];
-
-    float* pop_ptr = static_cast<float*>(pop_info.ptr);
-    int* even_ptr = static_cast<int*>(even_info.ptr);
-    int* odd_ptr = static_cast<int*>(odd_info.ptr);
-    float* rand1_ptr = static_cast<float*>(rand1_info.ptr);
-    float* rand2_ptr = static_cast<float*>(rand2_info.ptr);
-
-    #pragma omp parallel for
-    for (int i = 0; i < n_pairs; ++i) {
-        int idx1 = even_ptr[i];
-        int idx2 = odd_ptr[i];
-
-        float* p1 = &pop_ptr[idx1 * n_vars];
-        float* p2 = &pop_ptr[idx2 * n_vars];
-        float* r1 = &rand1_ptr[i * n_vars];
-        float* r2 = &rand2_ptr[i * n_vars];
-
-        for (int j = 0; j < n_vars; ++j) {
-            float cmin = std::min(p1[j], p2[j]);
-            float cmax = std::max(p1[j], p2[j]);
-            float I = cmax - cmin;
-
-            float lower = cmin - alpha * I;
-            float upper = cmax + alpha * I;
-
-            float o1 = lower + r1[j] * (upper - lower);
-            float o2 = lower + r2[j] * (upper - lower);
-
-            p1[j] = (o1 < 0.0f) ? 0.0f : (o1 > 1.0f ? 1.0f : o1);
-            p2[j] = (o2 < 0.0f) ? 0.0f : (o2 > 1.0f ? 1.0f : o2);
-        }
-    }
 }
 
 // Función de cruce en C++
@@ -510,10 +463,9 @@ py::array_t<double> update_pheromones_tsp(py::array_t<double> pheromones,
     }
 
     // 2. Cálculo de depósitos optimizado
-    const int n_threads = omp_get_max_threads();
     std::vector<double> delta_pheromones(total, 0.0);
 
-    #pragma omp parallel num_threads(n_threads)
+    #pragma omp parallel
     {
     #pragma omp for schedule(static) nowait
         for (int sol = 0; sol < n_solutions; ++sol)
@@ -545,6 +497,83 @@ py::array_t<double> update_pheromones_tsp(py::array_t<double> pheromones,
     }
 
     return pheromones;
+}
+
+void construct_solutions_tsp_inner_cpu(
+    py::array_t<int32_t> solutions,
+    py::array_t<uint8_t> visited,
+    py::array_t<double> pheromones,
+    py::array_t<double> heuristic_matrix,
+    py::array_t<double> rand_matrix,
+    int colony_size,
+    int n_cities,
+    double alpha,
+    double epsilon)
+{
+    // Obtener acceso a los buffers de los arrays
+    auto solutions_buf = solutions.request();
+    auto visited_buf = visited.request();
+    auto pheromones_buf = pheromones.request();
+    auto heuristic_buf = heuristic_matrix.request();
+    auto rand_buf = rand_matrix.request();
+
+    // Obtener punteros a los datos
+    int32_t* solutions_ptr = static_cast<int32_t*>(solutions_buf.ptr);
+    uint8_t* visited_ptr = static_cast<uint8_t*>(visited_buf.ptr);
+    double* pheromones_ptr = static_cast<double*>(pheromones_buf.ptr);
+    double* heuristic_ptr = static_cast<double*>(heuristic_buf.ptr);
+    double* rand_ptr = static_cast<double*>(rand_buf.ptr);
+
+    for(int i = 0; i < colony_size; ++i) {
+        for(int step = 1; step < n_cities; ++step) {
+            
+            const int current = solutions_ptr[i * n_cities + (step - 1)];
+            double rand = rand_ptr[i * (n_cities - 1) + (step - 1)];
+            
+            double total = 0.0;
+            double probabilities[n_cities];
+            
+            // Calcular probabilidades no normalizadas
+            for(int city = 0; city < n_cities; ++city) {
+                if(!visited_ptr[i * n_cities + city]) {
+                    const int idx = current * n_cities + city;
+                    const double ph = std::pow(pheromones_ptr[idx], alpha);
+                    probabilities[city] = ph * heuristic_ptr[idx];
+                    total += probabilities[city];
+                } else {
+                    probabilities[city] = 0.0;
+                }
+            }
+            
+            // Encontrar la siguiente ciudad
+            int selected = -1;
+            double cumulative = 0.0;
+            const double inv_total = (total > 0) ? 1.0 / (total + epsilon) : 0.0;
+            
+            for(int city = 0; city < n_cities; ++city) {
+                if(!visited_ptr[i * n_cities + city]) {
+                    cumulative += probabilities[city] * inv_total;
+                    if(cumulative >= rand && selected == -1) {
+                        selected = city;
+                    }
+                }
+            }
+            
+            // Fallback: seleccionar primera ciudad no visitada
+            if(selected == -1) {
+                for(int city = 0; city < n_cities; ++city) {
+                    if(!visited_ptr[i * n_cities + city]) {
+                        selected = city;
+                        break;
+                    }
+                }
+            }
+
+            // Actualizar solución y visitados
+            solutions_ptr[i * n_cities + step] = selected;
+            visited_ptr[i * n_cities + selected] = 1;
+        }
+    }
 }
 
 void construct_solutions_tsp_inner(
@@ -665,19 +694,6 @@ get_swap_sequence(py::array_t<int, py::array::c_style | py::array::forcecast> fr
     return seq;
 }
 
-// // Versión batch
-// vector<vector<pair<int, int>>> get_swap_sequence_batch(const vector<vector<int>>& from_tours,
-//                                                        const vector<vector<int>>& to_tours) {
-//     size_t n = from_tours.size();
-//     vector<vector<pair<int, int>>> batch(n);
-
-//     #pragma omp parallel for shared(batch, from_tours, to_tours) schedule(dynamic)
-//     for (size_t i = 0; i < n; ++i) {
-//         batch[i] = get_swap_sequence(from_tours[i], to_tours[i]);
-//     }
-//     return batch;
-// }
-
 void two_opt(py::array_t<int, py::array::c_style | py::array::forcecast> tours_np,
              py::array_t<float, py::array::c_style | py::array::forcecast> distances_np) {
     // Obtener buffers y formas
@@ -724,36 +740,38 @@ void two_opt(py::array_t<int, py::array::c_style | py::array::forcecast> tours_n
 PYBIND11_MODULE(utils, m) {
     m.doc() = "Módulo de utilidades CPP";
     m.def("fitness", &fitness, "Calcula la función fitness combinada", 
-          py::arg("weights"), py::arg("X_train"), py::arg("y_train"));
+          py::arg("weights"), py::arg("X_train"), py::arg("y_train"),
+          py::arg("alpha"), py::arg("threshold"));
     m.def("fitness_omp", &fitness_omp, "Calcula la función fitness con OpenMP",
-            py::arg("weights"), py::arg("X_train"), py::arg("y_train"), py::arg("fitness_values"));
+            py::arg("weights"), py::arg("X_train"), py::arg("y_train"), py::arg("fitness_values"),
+            py::arg("alpha"), py::arg("threshold"));
     m.def("clas_rate", &clas_rate, "Calcula la tasa de clasificación",
-            py::arg("weights"), py::arg("X_train"), py::arg("y_train"));
+            py::arg("weights"), py::arg("X_train"), py::arg("y_train"), py::arg("threshold"));
     m.def("red_rate", &red_rate, "Calcula la tasa de reducción",
-            py::arg("weights"));
+            py::arg("weights"), py::arg("threshold"));
     m.def("predict", &predict, "Realiza predicciones basadas en el modelo",
-            py::arg("X_test"), py::arg("weights"), py::arg("X_train"), py::arg("y_train"));
+            py::arg("X_test"), py::arg("weights"), py::arg("X_train"), py::arg("y_train"),
+            py::arg("threshold"));
     m.def("fitness_tsp", &fitness_tsp, "Calcula la función fitness para TSP",
             py::arg("distances"), py::arg("solution"));
     m.def("fitness_tsp_omp", &fitness_tsp_omp, "Calcula la función fitness para TSP usando OpenMP",
             py::arg("distances"), py::arg("solutions"), py::arg("fitness_values"));
-    m.def("crossover_blx", &crossover_blx, "Realiza el cruce BLX",
-            py::arg("population"), py::arg("pairs_even_idx"), py::arg("pairs_odd_idx"),
-            py::arg("rand_uniform1"), py::arg("rand_uniform2"), py::arg("alpha"));
     m.def("crossover_tsp", &crossover_tsp, "Realiza el cruce de soluciones TSP",
             py::arg("population"), py::arg("random_starts"), py::arg("random_ends"));
     m.def("mutation_tsp", &mutation_tsp, "Realiza la mutación de soluciones TSP",
             py::arg("population"), py::arg("individual_indices"), py::arg("indices1"), py::arg("indices2"));
     m.def("update_pheromones_tsp", &update_pheromones_tsp, "Actualiza las feromonas para TSP",
             py::arg("pheromones"), py::arg("colony"), py::arg("fitness_values"), py::arg("evaporation_rate"));
+    m.def("construct_solutions_tsp_inner_cpu", &construct_solutions_tsp_inner_cpu, "Construye soluciones para TSP en CPU",
+            py::arg("solutions"), py::arg("visited"), py::arg("pheromones"),
+            py::arg("heuristic_matrix"), py::arg("rand_matrix"), py::arg("colony_size"),
+            py::arg("n_cities"), py::arg("alpha"), py::arg("epsilon"));
     m.def("construct_solutions_tsp_inner", &construct_solutions_tsp_inner, "Construye soluciones para TSP",
             py::arg("solutions"), py::arg("visited"), py::arg("pheromones"),
             py::arg("heuristic_matrix"), py::arg("rand_matrix"), py::arg("colony_size"),
             py::arg("n_cities"), py::arg("alpha"), py::arg("epsilon"));
     m.def("get_swap_sequence", &get_swap_sequence, "Obtiene la secuencia de swaps entre dos tours",
             py::arg("from_tour"), py::arg("to_tour"));
-    // m.def("get_swap_sequence_batch", &get_swap_sequence_batch, "Obtiene la secuencia de swaps para un batch de tours",
-    //         py::arg("from_tours"), py::arg("to_tours"));
     m.def("two_opt", &two_opt, "Optimiza tours TSP usando 2-opt",
             py::arg("tours"), py::arg("distances"));
 }

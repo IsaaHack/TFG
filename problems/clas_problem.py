@@ -2,7 +2,6 @@ from . import Problem
 from . import utils, utils_gpu
 import cupy as cp
 import numpy as np
-import scipy.spatial.distance as sp
 
 SQRT_03 = np.sqrt(0.3)
 MIN_STD = 1e-3
@@ -10,7 +9,7 @@ MAX_STD = 0.25
 MAX_V = np.sqrt(0.5)
 
 class ClasProblem(Problem):
-    def __init__(self, X, Y, threshold=0.1, alpha=0.25):
+    def __init__(self, X, Y, threshold=0.1, alpha=0.75):
         self.X_gpu = cp.asarray(X, dtype=cp.float32, order='C')
         self.Y_gpu = cp.asarray(Y, dtype=cp.int32, order='C')
         self.X = X
@@ -30,9 +29,9 @@ class ClasProblem(Problem):
 
     def fitness(self, solutions):
         if len(solutions.shape) == 1:
-            return utils.fitness(solutions, self.X, self.Y)
+            return utils.fitness(solutions, self.X, self.Y, self.alpha, self.threshold)
         else:
-            return np.array([utils.fitness(solution, self.X, self.Y) for solution in solutions])
+            return np.array([utils.fitness(solution, self.X, self.Y, self.alpha, self.threshold) for solution in solutions])
     
     def fitness_omp(self, solutions):
         if len(solutions.shape) == 1:
@@ -40,31 +39,35 @@ class ClasProblem(Problem):
         else:
             fitness_values = np.empty(solutions.shape[0], dtype=np.float32)
 
-        utils.fitness_omp(solutions, self.X, self.Y, fitness_values)
+        utils.fitness_omp(solutions, self.X, self.Y, fitness_values, self.alpha, self.threshold)
 
         return fitness_values[0] if len(solutions.shape) == 1 else fitness_values
     
     def fitness_gpu(self, solutions):
-        solutions_gpu = cp.asarray(solutions, dtype=cp.float32, order='C')
-        fitness_values = cp.empty(solutions_gpu.shape[0], dtype=cp.float32)
+        try:
+            solutions_gpu = cp.asarray(solutions, dtype=cp.float32, order='C')
+            fitness_values = cp.empty(solutions_gpu.shape[0], dtype=cp.float32)
 
-        cp.cuda.Device().synchronize()  # Sincroniza el dispositivo antes de llamar a la función CUDA
+            cp.cuda.Device().synchronize()  # Sincroniza el dispositivo antes de llamar a la función CUDA
 
-        # Vectorización de todas las operaciones
-        mask = solutions_gpu >= self.threshold  # (n_solutions, n_features)
-        sqrt_weights = cp.multiply(cp.sqrt(solutions_gpu), mask)  # (n_solutions, n_features)
+            # Vectorización de todas las operaciones
+            mask = solutions_gpu >= self.threshold  # (n_solutions, n_features)
+            sqrt_weights = cp.multiply(cp.sqrt(solutions_gpu), mask)  # (n_solutions, n_features)
 
-        # Crear matriz 3D de características ponderadas (n_solutions, n_samples, n_features)
-        X_all = cp.ascontiguousarray(self.X_gpu[None, :, :] * sqrt_weights[:, None, :])
+            # Crear matriz 3D de características ponderadas (n_solutions, n_samples, n_features)
+            X_all = cp.ascontiguousarray(self.X_gpu[None, :, :] * sqrt_weights[:, None, :])
 
-        # Cálculo eficiente de todas las matrices de distancias
-        G = cp.einsum('ijk,ilk->ijl', X_all, X_all)
-        norms = cp.sum(cp.square(X_all), axis=2)  # (n_solutions, n_samples)
-        D = norms[:, :, None] + norms[:, None, :] - 2 * G
+            # Cálculo eficiente de todas las matrices de distancias
+            G = cp.einsum('ijk,ilk->ijl', X_all, X_all)
+            norms = cp.sum(cp.square(X_all), axis=2)  # (n_solutions, n_samples)
+            D = norms[:, :, None] + norms[:, None, :] - 2 * G
 
-        # Configurar diagonales a infinito
-        n_samples = self.X_gpu.shape[0]
-        D[:, cp.arange(n_samples), cp.arange(n_samples)] = cp.inf
+            # Configurar diagonales a infinito
+            n_samples = self.X_gpu.shape[0]
+            D[:, cp.arange(n_samples), cp.arange(n_samples)] = cp.inf
+        except cp.cuda.memory.OutOfMemoryError as e:
+            # Si hay un error de memoria, se usa la función alternativa
+            return self.fitness_gpu2(solutions)
 
         # Cálculo vectorizado de predicciones y métricas
         index_pred = cp.argmin(D, axis=2)  # Índices de vecinos más cercanos
@@ -74,33 +77,37 @@ class ClasProblem(Problem):
         red_rate = 100 * cp.sum(~mask, axis=1) / self.n_features  # Tasa de reducción
 
         # Cálculo final del fitness
-        fitness_values = clas_rate * (1 - self.alpha) + red_rate * self.alpha
+        fitness_values = clas_rate * self.alpha + red_rate * (1-self.alpha)
         return fitness_values.get()  # Convertir de cupy a numpy
     
-    # def fitness_gpu2(self, solutions):
-    #     solutions_gpu = cp.asarray(solutions, dtype=cp.float32, order='C')
+    def fitness_gpu2(self, solutions):
+        solutions_gpu = cp.asarray(solutions, dtype=cp.float32, order='C')
 
-    #     X_capsule = utils_gpu.create_capsule(self.X_gpu.data.ptr)
-    #     Y_capsule = utils_gpu.create_capsule(self.Y_gpu.data.ptr)
+        X_capsule = utils_gpu.create_capsule(self.X_gpu.data.ptr)
+        Y_capsule = utils_gpu.create_capsule(self.Y_gpu.data.ptr)
         
-    #     cp.cuda.Device().synchronize()  # Sincroniza el dispositivo antes de llamar a la función CUDA
+        cp.cuda.Device().synchronize()  # Sincroniza el dispositivo antes de llamar a la función CUDA
 
-    #     if len(solutions.shape) == 1:
-    #         return utils_gpu.fitness_cuda(
-    #                 utils_gpu.create_capsule(solutions_gpu.data.ptr),
-    #                 X_capsule,
-    #                 Y_capsule,
-    #                 self.n_samples,
-    #                 self.n_features
-    #         )
-    #     else:
-    #         return np.array([utils_gpu.fitness_cuda(
-    #                 utils_gpu.create_capsule(solutions_gpu[i].data.ptr),
-    #                 X_capsule,
-    #                 Y_capsule,
-    #                 self.n_samples,
-    #                 self.n_features
-    #         ) for i in range(solutions.shape[0])])
+        if len(solutions.shape) == 1:
+            return utils_gpu.fitness_cuda(
+                    utils_gpu.create_capsule(solutions_gpu.data.ptr),
+                    X_capsule,
+                    Y_capsule,
+                    self.n_samples,
+                    self.n_features,
+                    self.alpha, 
+                    self.threshold
+            )
+        else:
+            return np.array([utils_gpu.fitness_cuda(
+                    utils_gpu.create_capsule(solutions_gpu[i].data.ptr),
+                    X_capsule,
+                    Y_capsule,
+                    self.n_samples,
+                    self.n_features,
+                    self.alpha,
+                    self.threshold
+            ) for i in range(solutions.shape[0])])
         
     def fitness_hybrid(self, solutions, speedup=1):
         if len(solutions.shape) == 1:
@@ -118,36 +125,21 @@ class ClasProblem(Problem):
                 fitness_values,
                 self.n_samples,
                 self.n_features,
-                speedup
+                speedup,
+                self.alpha,
+                self.threshold
         )
 
         return fitness_values[0] if len(solutions.shape) == 1 else fitness_values, new_speedup
     
     def clas_rate(self, solution):
-        return utils.clas_rate(solution, self.X, self.Y)
+        return utils.clas_rate(solution, self.X, self.Y, self.threshold)
     
     def red_rate(self, solution):
-        return utils.red_rate(solution)
+        return utils.red_rate(solution, self.threshold)
     
     def predict(self, X_test, solution):
-        # X = np.concatenate((self.X, X_test))
-
-        # weights_to_use = solution[solution >= 0.1]
-        # atributes_to_use = X[:, solution >= 0.1]
-
-        # #atributes_to_use = atributes_to_use * np.sqrt(weights_to_use)
-
-        # # equivalente a la distancia euclidea
-        # distances = sp.squareform(sp.pdist(atributes_to_use, 'minkowski', p=2, w=weights_to_use))
-        # distances[np.diag_indices(distances.shape[0])] = np.inf
-
-        # distances = distances[self.X.shape[0]:, :self.X.shape[0]]
-        # index_predictions = np.argmin(distances, axis=1)
-        # predictions_labels = self.Y[index_predictions]
-
-        # return predictions_labels
-
-        return utils.predict(X_test, solution, self.X, self.Y)
+        return utils.predict(X_test, solution, self.X, self.Y, self.threshold)
     
     def crossover(self, population, crossover_rate, alpha: float = 0.3):
         n_pairs = int(np.floor(crossover_rate * len(population) / 2))
@@ -177,18 +169,6 @@ class ClasProblem(Problem):
 
         # Asegura que todos los valores estén en el rango [0,1]
         population[:2 * n_pairs] = np.clip(population[:2 * n_pairs], 0, 1)
-
-    def crossover2(self, population, crossover_rate, alpha: float = 0.3):
-        # Calcular número de pares
-        n_pairs = int(np.floor(crossover_rate * len(population) / 2))
-        idx_even = np.arange(0, 2 * n_pairs, 2, dtype=np.int32)
-        idx_odd = np.arange(1, 2 * n_pairs, 2, dtype=np.int32)
-
-        # Generar valores aleatorios uniformes para cada descendiente
-        rand_uniform1 = np.random.rand(n_pairs, population.shape[1]).astype(np.float32)
-        rand_uniform2 = np.random.rand(n_pairs, population.shape[1]).astype(np.float32)
-
-        return utils.crossover_blx(population, idx_even, idx_odd, rand_uniform1, rand_uniform2, alpha=alpha)
 
     def mutation(self, population, mutation_rate):
         estimated_mutations = int(mutation_rate * population.shape[0])

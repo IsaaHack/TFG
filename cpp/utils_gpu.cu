@@ -27,18 +27,15 @@ py::capsule create_capsule(size_t ptr_address) {
 }
 
 void s_solutions_hybrid(int &n_sol_cpu, int &n_sol_gpu, const int n_sol, const float speedup_factor) {
-    // Calcular la distribución de soluciones entre CPU y GPU
-    n_sol_gpu = round(n_sol * speedup_factor / (1 + speedup_factor));
-    n_sol_cpu = n_sol - n_sol_gpu;
-
-    if (n_sol_gpu <= 0) {
+    // Proteger contra valores no válidos o negativos
+    if (speedup_factor <= 0.0f) {
         n_sol_gpu = 0;
         n_sol_cpu = n_sol;
-    } else if (n_sol_cpu <= 0) {
-        n_sol_cpu = 0;
-        n_sol_gpu = n_sol;
+        return;
     }
-    
+
+    n_sol_gpu = round(n_sol * speedup_factor / (1.0f + speedup_factor));
+    n_sol_cpu = n_sol - n_sol_gpu;
 }
 
 __global__ void warmup_kernel() {
@@ -130,29 +127,14 @@ float fitness_tsp_hybrid(
     auto fitness_ptr = static_cast<float *>(fitness_info.ptr);
     float* d_distances = static_cast<float*>(distances_capsule.get_pointer());
 
-    // --- Calcular distribución CPU/GPU ---
-    // int num_solutions_cpu = round(num_solutions / speedup_factor);
-    // int num_solutions_gpu = num_solutions - num_solutions_cpu;
-
-    // if (num_solutions_gpu <= 0) {
-    //     num_solutions_gpu = 1;
-    //     num_solutions_cpu = num_solutions - 1;
-    // } else if (num_solutions_cpu <= 0) {
-    //     num_solutions_cpu = 1;
-    //     num_solutions_gpu = num_solutions - 1;
-    // }
     int num_solutions_cpu = 0;
     int num_solutions_gpu = 0;
     s_solutions_hybrid(num_solutions_cpu, num_solutions_gpu, num_solutions, speedup_factor);
 
     float time_gpu, time_cpu;
 
-    // if (num_solutions_cpu != 0) {
-    //     //omp_set_nested(1);
-    // }
-
     // --- Ejecución paralela CPU y GPU ---
-    #pragma omp parallel sections shared(d_distances, solution_ptr, fitness_ptr, n, num_solutions_gpu, num_solutions_cpu)
+    #pragma omp parallel sections num_threads(2) shared(d_distances, solution_ptr, fitness_ptr, n, num_solutions_gpu, num_solutions_cpu)
     {
         // --- Sección GPU ---
         #pragma omp section
@@ -226,7 +208,7 @@ float fitness_tsp_hybrid(
 
 
 // Kernel para filtrar pesos y características
-__global__ void filter_kernel(const float* weights, int* valid_indices, int* valid_count, int total_features) {
+__global__ void filter_kernel(const float* weights, int* valid_indices, int* valid_count, int total_features, const float threshold) {
     extern __shared__ int sdata[];
 
     int tid = threadIdx.x;
@@ -234,7 +216,7 @@ __global__ void filter_kernel(const float* weights, int* valid_indices, int* val
 
     // Cargar datos en memoria compartida
     if (idx < total_features) {
-        sdata[tid] = (weights[idx] >= THRESHOLD) ? 1 : 0;
+        sdata[tid] = (weights[idx] >= threshold) ? 1 : 0;
     }
     __syncthreads();
 
@@ -364,7 +346,7 @@ __global__ void accuracy_kernel(const int* __restrict__ predictions, const int* 
 float clas_rate_cuda(const thrust::device_vector<float>& d_weights,
                     const thrust::device_vector<float>& d_X_train,
                     const thrust::device_vector<int>& d_y_train,
-                    int num_samples, int num_features) {
+                    int num_samples, int num_features, const float threshold) {
     // 1. Filtrar características relevantes
     thrust::device_vector<int> d_valid_indices(num_features);
     thrust::device_vector<int> d_valid_count(1, 0);
@@ -376,7 +358,7 @@ float clas_rate_cuda(const thrust::device_vector<float>& d_weights,
     filter_kernel<<<gridSize, blockSize, smSize>>>(thrust::raw_pointer_cast(d_weights.data()),
                                                     thrust::raw_pointer_cast(d_valid_indices.data()),
                                                     thrust::raw_pointer_cast(d_valid_count.data()),
-                                                    num_features);
+                                                    num_features, threshold);
 
     cudaDeviceSynchronize();
     int valid_features = d_valid_count[0];
@@ -429,16 +411,24 @@ float clas_rate_cuda(const thrust::device_vector<float>& d_weights,
 }
 
 struct IsRedundant {
-    __host__ __device__ bool operator()(float w) const {
-        return w < THRESHOLD;
+    const float threshold;
+
+    // Constructor para inicializar el threshold
+    __host__ __device__
+    IsRedundant(float t) : threshold(t) {}
+
+    __host__ __device__
+    bool operator()(float w) const {
+        return w < threshold;
     }
 };
 
-float red_rate_cuda(const thrust::device_vector<float>& d_weights) {
+float red_rate_cuda(const thrust::device_vector<float>& d_weights, 
+                    const float threshold) {
     auto count = thrust::count_if(thrust::device,
-                                 d_weights.begin(),
-                                 d_weights.end(),
-                                 IsRedundant{});
+                                  d_weights.begin(),
+                                  d_weights.end(),
+                                  IsRedundant(threshold));
     return 100.0f * count / d_weights.size();
 }
 
@@ -447,7 +437,9 @@ float fitness_cuda(
     py::capsule X_train_capsule,
     py::capsule y_train_capsule,
     int num_samples,
-    int num_features
+    int num_features,
+    const float alpha,
+    const float threshold
 ) {
     // Obtener punteros desde CuPy y envolver en thrust::device_ptr
     thrust::device_ptr<float> d_weights_prt(
@@ -469,10 +461,10 @@ float fitness_cuda(
     float red = 0.0f;
 
     // Llamar a kernels CUDA directamente con los punteros
-    clas = clas_rate_cuda(d_weights, d_X_train, d_y_train, num_samples, num_features);
-    red = red_rate_cuda(d_weights);
+    clas = clas_rate_cuda(d_weights, d_X_train, d_y_train, num_samples, num_features, threshold);
+    red = red_rate_cuda(d_weights, threshold);
 
-    return CLASS_WEIGHT * clas + RED_WEIGHT * red;
+    return alpha * clas + (1 - alpha) * red;
 }
 
 float fitness_hybrid(
@@ -484,7 +476,9 @@ float fitness_hybrid(
     py::array_t<float> fitness_values_np,
     int num_samples,
     int num_features,
-    float speedup_factor
+    float speedup_factor,
+    float alpha,
+    float threshold
 ) {
     // --- Obtener información de arrays ---
     auto weights_info = weights_np.request();
@@ -509,17 +503,6 @@ float fitness_hybrid(
     thrust::device_vector<float> d_X_train(d_X_train_prt, d_X_train_prt + num_samples * num_features);
     thrust::device_vector<int> d_y_train(d_y_train_prt, d_y_train_prt + num_samples);
 
-    // --- Dividir trabajo entre CPU y GPU ---
-    // int num_weights_cpu = round(n_sol / speedup_factor);
-    // int num_weights_gpu = n_sol - num_weights_cpu;
-
-    // if (num_weights_gpu <= 0) {
-    //     num_weights_gpu = 1;
-    //     num_weights_cpu = n_sol - 1;
-    // } else if (num_weights_cpu <= 0) {
-    //     num_weights_cpu = 1;
-    //     num_weights_gpu = n_sol - 1;
-    // }
     int num_weights_cpu = 0;
     int num_weights_gpu = 0;
     s_solutions_hybrid(num_weights_cpu, num_weights_gpu, n_sol, speedup_factor);
@@ -529,7 +512,7 @@ float fitness_hybrid(
     float time_gpu, time_cpu;
 
     // --- Secciones paralelas: GPU y CPU ---
-    #pragma omp parallel sections num_threads(2) shared(weights_cpu, X_train_ptr, y_train_ptr, fitness_values)
+    #pragma omp parallel sections num_threads(2) shared(weights_cpu, X_train_ptr, y_train_ptr, fitness_values,num_weights_cpu, num_weights_gpu, n, d, w_size, alpha, threshold, d_X_train, d_y_train, time_gpu, time_cpu)
     {
         // --- Sección GPU ---
         #pragma omp section
@@ -550,12 +533,12 @@ float fitness_hybrid(
                     weights_gpu_ptr + (i + 1) * num_features
                 );
 
-                clas = clas_rate_cuda(temp_weight_vector, d_X_train, d_y_train, n, d);
-                red = red_rate_cuda(temp_weight_vector);
+                clas = clas_rate_cuda(temp_weight_vector, d_X_train, d_y_train, n, d, threshold);
+                red = red_rate_cuda(temp_weight_vector, threshold);
 
                 cudaDeviceSynchronize();
 
-                fitness_values[i] = CLASS_WEIGHT * clas + RED_WEIGHT * red;
+                fitness_values[i] = alpha * clas + (1 - alpha) * red;
             }
 
             // --- Liberar memoria de la GPU ---
@@ -583,7 +566,9 @@ float fitness_hybrid(
                 num_weights_cpu,
                 n,
                 d,
-                w_size
+                w_size,
+                alpha,
+                threshold
             );
 
             omp_set_nested(0);
@@ -595,8 +580,6 @@ float fitness_hybrid(
             
         }
     }
-
-    
 
     float new_speedup_factor = 1;
     if (num_weights_cpu != 0 && num_weights_gpu != 0) {
@@ -618,12 +601,14 @@ PYBIND11_MODULE(utils_gpu, m) {
             py::arg("n"), py::arg("num_solutions"), py::arg("speedup_factor"));
     m.def("fitness_cuda", &fitness_cuda, "Calcular fitness usando CUDA",
           py::arg("weights"), py::arg("X_train"), py::arg("y_train"),
-          py::arg("num_samples"), py::arg("num_features"));
+          py::arg("num_samples"), py::arg("num_features"),
+          py::arg("alpha"), py::arg("threshold"));
     m.def("fitness_hybrid", &fitness_hybrid, "Calcular fitness híbrido usando CUDA y CPU",
             py::arg("weights"), py::arg("X_train"), py::arg("y_train"),
             py::arg("X_train_capsule"), py::arg("y_train_capsule"),
             py::arg("fitness_values"), py::arg("num_samples"),
-            py::arg("num_features"), py::arg("speedup_factor"));
+            py::arg("num_features"), py::arg("speedup_factor"),
+            py::arg("alpha"), py::arg("threshold"));
     m.def("warmup", &warmup_kernel, "Calentar la GPU");
     m.def("create_capsule", &create_capsule, "Crear cápsula CUDA",
           py::arg("ptr_address"));

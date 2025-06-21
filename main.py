@@ -1,8 +1,12 @@
 from test.test_algorithms import main as test_algorithms_main
 from test.test_fitness import main as test_fitness_main
+from clas import main as clas_main
 from tsp import main as tsp_main
 from cluster_main import main as cluster_main
 import argparse
+import numpy as np
+import os
+import itertools
 
 def main(test_type=None, algorithm=None, executer=None, tsp_file=None,
          problem=None, problem_file=None, nodes=None, timelimit=None):
@@ -50,7 +54,37 @@ def main(test_type=None, algorithm=None, executer=None, tsp_file=None,
         test_fitness_main()
 
     elif choice == '3' or choice == 3:
-        raise NotImplementedError("Clas experiments are not implemented yet.")
+        csv_file = "datasets/Clas/bank.csv"
+
+        algo = ['ga', 'aco', 'pso']
+        exec = ['single', 'multi', 'gpu', 'hybrid']
+
+        timelimits = [20, 40, 60]
+        iterations = [300, 600, 900]
+
+        total_runs = len(algo) * len(exec) * (len(timelimits) + len(iterations))
+        runs_completed = 0
+
+        for a, e in itertools.product(algo, exec):
+            for t in timelimits:
+                i = np.inf
+                print(f"Running Clas with {a.upper()} on {e} executer for {t} seconds...")
+                clas_main(csv_file=csv_file, algorithm=a, executer=e, timelimit=t, iterations=i, verbose=False)
+                runs_completed += 1
+                print(f"Completed {runs_completed}/{total_runs} runs.")
+            for i in iterations:
+                t = None
+                print(f"Running Clas with {a.upper()} on {e} executer for {i} iterations...")
+                clas_main(csv_file=csv_file, algorithm=a, executer=e, timelimit=t, iterations=i, verbose=False)
+                runs_completed += 1
+                print(f"Completed {runs_completed}/{total_runs} runs.")
+
+        # Read de results file
+        results_file = 'results/clas_results.csv'
+        if not os.path.exists(results_file):
+            print("No results file found. Please run the tests first.")
+            return
+        print(f"Results saved in {results_file}.")
 
     elif choice == '4' or choice == 4:
         if tsp_file is None:

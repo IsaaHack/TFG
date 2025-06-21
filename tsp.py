@@ -85,7 +85,7 @@ def build_distance_matrix(meta, coords_arr, edge_lines):
     return matrix
 
 
-def main(tsp_file, algorithm, executer='gpu'):
+def main(tsp_file, algorithm, executer='gpu', iterations=None, timelimit=None):
     meta, node_lines, edge_lines = read_tsp_file(tsp_file)
     coords_arr = extract_coords(node_lines) if node_lines else None
     dist_matrix = build_distance_matrix(meta, coords_arr, edge_lines)
@@ -95,23 +95,31 @@ def main(tsp_file, algorithm, executer='gpu'):
     print("Number of cities:", dist_matrix_np.shape[0])
     print("Distance matrix shape:", dist_matrix_np.shape)
 
-    problem = TSPProblem(dist_matrix_np)
+    if executer == 'hybrid':
+        problem_executer = 'gpu'
+    else:
+        problem_executer = executer
+
+    problem = TSPProblem(dist_matrix_np, executer=problem_executer)
     if algorithm == 'ga':
         print("Using Genetic Algorithm...")
         algoritm = GA(problem, population_size=1024, seed=42, executer=executer, mutation_rate=0.12, crossover_rate=0.85, tournament_size=6)
-        iterations = 10000
+        if iterations is None:
+            iterations = 1000
     elif algorithm == 'aco':
         print("Using Ant Colony Optimization...")
         algoritm = ACO(problem, colony_size=1024, seed=42, executer=executer, alpha=1.2, beta=4.0, evaporation_rate=0.01)
-        iterations = 10000
+        if iterations is None:
+            iterations = 1000
     elif algorithm == 'pso':
         print("Using Particle Swarm Optimization...")
         algoritm = PSO(problem, swarm_size=1024, seed=42, executer=executer, inertia_weight=0.4, cognitive_weight=0.6, social_weight=0.7)
-        iterations = 1000
+        if iterations is None:
+            iterations = 1000
 
     print("Starting Algorithm...")
     start = time()
-    path = algoritm.fit(iterations, verbose=True)
+    path = algoritm.fit(iterations, timelimit=timelimit, verbose=True)
     end = time()
     print("Time:", end - start)
     fit = problem.fitness(path)
@@ -161,18 +169,29 @@ def main(tsp_file, algorithm, executer='gpu'):
             print("Fitness del óptimo:", -fitness_opt)
 
             # Comparar fitness
-            ratio = np.round(-(fit - fitness_opt) / abs(fitness_opt), 4)*100
-            print("La solución encontrada es", ratio, "% peor que la solución óptima")
+            gap = np.round(-(fit - fitness_opt) / abs(fitness_opt), 4)*100
+            print("La solución encontrada es", gap, "% peor que la solución óptima")
 
-            if ratio < 0:
+            if gap < 0:
                 print("✅ La solución encontrada es mejor que el óptimo registrado (posible error en el óptimo)")
-            elif ratio > 0:
+            elif gap > 0:
                 print("📉 La solución encontrada es peor que el óptimo registrado.")
             else:
                 print("🎯 La solución encontrada es igual al óptimo.")
 
     else:
+        gap = np.nan
         print("\nNo se encontró archivo con la solución óptima.")
+
+    # Si el archivo results/tsp_results.csv no existe, lo creamos
+    results_file = 'results/tsp_results.csv'
+    if not os.path.exists('results'):
+        os.makedirs('results')
+    if not os.path.exists(results_file):
+        with open(results_file, 'w') as f:
+            f.write("Name,Cities,Algorithm,Executer,Iterations,Timelimit,Fitness,Time\n")
+    with open(results_file, 'a') as f:
+        f.write(f"{os.path.basename(tsp_file)},{dist_matrix_np.shape[0]},{algorithm},{executer},{iterations},{int(algoritm.timelimit) if hasattr(algoritm, 'timelimit') else 'N/A'},{-fit},{end - start:.2f}\n")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -182,5 +201,9 @@ if __name__ == '__main__':
                         help='Algorithm to use (default: aco)')
     parser.add_argument('-e', '--executer', choices=['single', 'multi', 'gpu', 'hybrid'], default='gpu',
                         help='Execution type: single, multi, gpu, or hybrid (default: gpu)')
+    parser.add_argument('-i', '--iterations', type=int, default=None,
+                        help='Number of iterations for the algorithm (default: None, will use default for each algorithm)')
+    parser.add_argument('-t', '--timelimit', type=int, default=None,
+                        help='Time limit for the algorithm in seconds (default: None, will use default for each algorithm)')
     args = parser.parse_args()
-    main(args.tsp_file, args.algorithm, args.executer)
+    main(args.tsp_file, args.algorithm, args.executer, args.iterations, args.timelimit)

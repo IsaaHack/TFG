@@ -83,18 +83,31 @@ def main(tsp_file, timelimit=60, executer='gpu'):
                 print("Fitness del óptimo:", -fitness_opt)
 
                 # Comparar fitness
-                ratio = np.round(-(fit - fitness_opt) / abs(fitness_opt), 4)*100
-                print("La solución encontrada es", ratio, "% peor que la solución óptima")
+                gap = np.round(-(fit - fitness_opt) / abs(fitness_opt), 4)*100
+                print("La solución encontrada es", gap, "% peor que la solución óptima")
 
-                if ratio < 0:
+                if gap < 0:
                     print("✅ La solución encontrada es mejor que el óptimo registrado (posible error en el óptimo)")
-                elif ratio > 0:
+                elif gap > 0:
                     print("📉 La solución encontrada es peor que el óptimo registrado.")
                 else:
                     print("🎯 La solución encontrada es igual al óptimo.")
 
         else:
+            gap = np.nan
             print("\nNo se encontró archivo con la solución óptima.")
+
+        # Si el archivo results/cluster_tsp_results.csv no existe, lo creamos
+        results_file = 'results/cluster_tsp_results.csv'
+        if not os.path.exists('results'):
+            os.makedirs('results')
+        if not os.path.exists(results_file):
+            with open(results_file, 'w') as f:
+                f.write("Name,Cities,Algorithm,Executer,Timelimit,Fitness,Gap\n")
+
+        # Guardar el nombre del archivo y los resultados
+        with open(results_file, 'a') as f:
+            f.write(f"{os.path.basename(tsp_file)},{dist_matrix_np.shape[0]},{algorithm0.name},{executer},{timelimit},{-fit:.4f},{gap:.4f}\n")
 
     MPI.Finalize()
 
