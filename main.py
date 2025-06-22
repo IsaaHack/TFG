@@ -88,8 +88,7 @@ def main(test_type=None, algorithm=None, executer=None, tsp_file=None,
 
     elif choice == '4' or choice == 4:
         base_path = 'datasets/TSP/'
-        #tsp_files = ['bays29.tsp', 'eil51.tsp', 'berlin52.tsp', 'eil76.tsp', 'eil101.tsp', 'tsp225.tsp', 'pcb442.tsp']
-        tsp_files = ['pcb442.tsp']
+        tsp_files = ['bays29.tsp', 'eil51.tsp', 'berlin52.tsp', 'eil76.tsp', 'eil101.tsp', 'tsp225.tsp', 'pcb442.tsp']
 
         algo = ['ga', 'aco', 'pso']
         exec = ['single', 'multi', 'gpu', 'hybrid']
