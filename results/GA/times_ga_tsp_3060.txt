@@ -1,4 +1,0 @@
-CPU (MONO): 0.18s
-CPU (MULTI): 0.04s
-GPU: 0.07s
-HYBRID (GPU+CPUs): 0.07s
