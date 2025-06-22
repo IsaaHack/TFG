@@ -81,10 +81,12 @@ class ClusterExecuter(Executer):
 
                 if status.tag == FINISH_TAG:
                     end_number += 1
-                    print(f"Process {source} finished. Total finished: {end_number}/{size-1}")
+                    if verbose:
+                        print(f"Process {source} finished. Total finished: {end_number}/{size-1}")
                     if end_number == size - 1:
                         end = True
-                        print("All processes finished.")
+                        if verbose:
+                            print("All processes finished.")
 
             return np.copy(best)
 

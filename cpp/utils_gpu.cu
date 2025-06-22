@@ -134,7 +134,7 @@ float fitness_tsp_hybrid(
     float time_gpu, time_cpu;
 
     // --- Ejecución paralela CPU y GPU ---
-    #pragma omp parallel sections num_threads(2) shared(d_distances, solution_ptr, fitness_ptr, n, num_solutions_gpu, num_solutions_cpu)
+    #pragma omp parallel sections shared(d_distances, solution_ptr, fitness_ptr, n, num_solutions_gpu, num_solutions_cpu)
     {
         // --- Sección GPU ---
         #pragma omp section

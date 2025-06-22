@@ -9,7 +9,7 @@ import os
 import itertools
 
 def main(test_type=None, algorithm=None, executer=None, tsp_file=None,
-         problem=None, problem_file=None, nodes=None, timelimit=None):
+         problem=None):
     
     if test_type is None:  # Modo interactivo
         print("What would you like to test?")
@@ -87,49 +87,68 @@ def main(test_type=None, algorithm=None, executer=None, tsp_file=None,
         print(f"Results saved in {results_file}.")
 
     elif choice == '4' or choice == 4:
-        if tsp_file is None:
-            tsp_file = input("Enter TSP file path (default: datasets/TSP/berlin52.tsp): ") or 'datasets/TSP/berlin52.tsp'
-        if algorithm is None:
-            print("Algorithm for TSP?")
-            print("1. Genetic Algorithm (GA)")
-            print("2. Ant Colony Optimization (ACO)")
-            print("3. Particle Swarm Optimization (PSO)")
-            algo_choice = input("Enter 1, 2, or 3: ")
-            algorithm = {'1': 'ga', '2': 'aco', '3': 'pso'}.get(algo_choice)
-            if algorithm is None:
-                print("Invalid algorithm choice.")
-                return
-        if executer is None:
-            print("Executer for TSP?")
-            print("1. CPU single-threaded")
-            print("2. CPU multi-threaded")
-            print("3. GPU")
-            print("4. Hybrid (CPU + GPU)")
-            exec_choice = input("Enter 1, 2, 3, or 4: ")
-            executer = {'1': 'single', '2': 'multi', '3': 'gpu', '4': 'hybrid'}.get(exec_choice)
-            if executer is None:
-                print("Invalid executer choice.")
-                return
-        
-        print(f"Running TSP {algorithm.upper()} with {executer} on file {tsp_file}...")
-        tsp_main(tsp_file=tsp_file, algorithm=algorithm, executer=executer)
+        base_path = 'datasets/TSP/'
+        #tsp_files = ['bays29.tsp', 'eil51.tsp', 'berlin52.tsp', 'eil76.tsp', 'eil101.tsp', 'tsp225.tsp', 'pcb442.tsp']
+        tsp_files = ['pcb442.tsp']
+
+        algo = ['ga', 'aco', 'pso']
+        exec = ['single', 'multi', 'gpu', 'hybrid']
+
+        timelimits = [30, 60]
+        iterations = [500, 1000]
+        total_runs = len(algo) * len(exec) * len(tsp_files) * (len(timelimits) + len(iterations))
+        runs_completed = 0
+
+        for tsp_file in tsp_files:
+            for a, e in itertools.product(algo, exec):
+                for t in timelimits:
+                    i = np.inf
+                    print(f"Running TSP with {a.upper()} on {e} executer for {t} seconds on {tsp_file}...")
+                    tsp_main(tsp_file=f"{base_path}{tsp_file}", algorithm=a, executer=e, timelimit=t, iterations=i, verbose=False)
+                    runs_completed += 1
+                    print(f"Completed {runs_completed}/{total_runs} runs.")
+                for i in iterations:
+                    t = None
+                    print(f"Running TSP with {a.upper()} on {e} executer for {i} iterations on {tsp_file}...")
+                    tsp_main(tsp_file=f"{base_path}{tsp_file}", algorithm=a, executer=e, timelimit=t, iterations=i, verbose=False)
+                    runs_completed += 1
+                    print(f"Completed {runs_completed}/{total_runs} runs.")
+
+        # Read de results file
+        results_file = 'results/tsp_results.csv'
+        if not os.path.exists(results_file):
+            print("No results file found. Please run the tests first.")
+            return
+        print(f"Results saved in {results_file}.")
 
     elif choice == '5' or choice == 5:
         if problem is None:
             problem = input("Problem type (tsp/clas, default: tsp): ") or 'tsp'
-        if problem_file is None:
-            problem_file = input("Problem file (default: datasets/TSP/berlin52.tsp): ") or 'datasets/TSP/berlin52.tsp'
-        if nodes is None:
-            nodes = input("Nodes (default: compute5 compute2 compute3 compute4): ") or 'compute5 compute2 compute3 compute4'
-        else:
-            nodes = ' '.join(nodes) if isinstance(nodes, list) else nodes
-        if executer is None:
-            executer = input("Executer (single/multi/gpu/hybrid, default: gpu): ") or 'gpu'
-        if timelimit is None:
-            timelimit = int(input("Timelimit (default: 60): ") or '60')
+        
+        if problem == 'tsp':
+            base_path = 'datasets/TSP/'
+            tsp_files = ['bays29.tsp', 'eil51.tsp', 'berlin52.tsp', 'eil76.tsp', 'eil101.tsp', 'tsp225.tsp', 'pcb442.tsp']
 
-        print(f"Running cluster {problem} with file {problem_file} on nodes {nodes}...")
-        cluster_main(problem=problem, problem_file=problem_file, nodes=nodes.split(), executer=executer, timelimit=int(timelimit))
+            timelimits = [30, 60, 120]
+            exec = ['single', 'multi', 'gpu', 'hybrid']
+            total_runs = len(tsp_files) * len(timelimits) * len(exec)
+            runs_completed = 0
+
+            for tsp_file in tsp_files:
+                for e in exec:
+                    for t in timelimits:
+                        print(f"Running Cluster TSP on {tsp_file} with {e} executer for {t} seconds...")
+                        cluster_main(problem_file=f"{base_path}{tsp_file}", executer=e, timelimit=t, problem=problem, verbose=False)
+                        runs_completed += 1
+                        print(f"Completed {runs_completed}/{total_runs} runs.")
+
+            results_file = 'results/cluster_tsp_results.csv'
+            if not os.path.exists(results_file):
+                print("No results file found. Please run the tests first.")
+                return
+            print(f"Results saved in {results_file}.")
+        elif problem == 'clas':
+            pass
 
     elif choice == '6' or choice == 6:
         print("Exiting the test suite.")

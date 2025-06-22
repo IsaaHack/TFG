@@ -12,7 +12,10 @@ def read_csv_file(path):
     return pd.read_csv(path)
 
 def preprocess_bank_marketing_dataset(df):
-    pd.set_option('future.no_silent_downcasting', True)
+    try:
+        pd.set_option('future.no_silent_downcasting', True)
+    except Exception as e:
+        pass
 
     # Codificar binarias como 0/1
     binary_cols = ['default', 'housing', 'loan']

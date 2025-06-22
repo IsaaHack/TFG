@@ -528,12 +528,12 @@ class TSPProblem(Problem):
             vel_inertia = velocity[i][:inertia_count]  # Tomar primeros 'inertia_count' intercambios
             
             # Componente cognitivo: intercambios hacia p_best[i]
-            swaps_cog = self.get_swap_sequence(tour, p_best[i])
+            swaps_cog = TSPProblem._get_swap_sequence(tour, p_best[i])
             k1 = int(cognitive_weight * len(swaps_cog))
             vel_cognitive = swaps_cog[:k1]
             
             # Componente social: intercambios hacia g_best
-            swaps_soc = self.get_swap_sequence(tour, g_best)
+            swaps_soc = TSPProblem._get_swap_sequence(tour, g_best)
             k2 = int(social_weight * len(swaps_soc))
             vel_social = swaps_soc[:k2]
             
@@ -602,7 +602,7 @@ class TSPProblem(Problem):
             for a, b in swaps:
                 tour[a], tour[b] = tour[b], tour[a]
         
-        swarm = self.two_opt(swarm, self.distances_gpu)
+        swarm = TSPProblem.two_opt(swarm, self.distances_gpu)
 
         return swarm
     
@@ -613,7 +613,7 @@ class TSPProblem(Problem):
             for a, b in swaps:
                 tour[a], tour[b] = tour[b], tour[a]
         
-        swarm = self.two_opt_cpu(swarm, self.distances)
+        swarm = TSPProblem.two_opt_cpu(swarm, self.distances)
 
         return swarm
     
@@ -624,6 +624,6 @@ class TSPProblem(Problem):
             for a, b in swaps:
                 tour[a], tour[b] = tour[b], tour[a]
         
-        swarm = utils.two_opt(swarm, self.distances)
+        utils.two_opt(swarm, self.distances)
 
         return swarm
