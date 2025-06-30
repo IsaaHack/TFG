@@ -1,0 +1,37 @@
+TFG.test package
+================
+
+Submodules
+----------
+
+TFG.test.common module
+----------------------
+
+.. automodule:: TFG.test.common
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+TFG.test.test\_algorithms module
+--------------------------------
+
+.. automodule:: TFG.test.test_algorithms
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+TFG.test.test\_fitness module
+-----------------------------
+
+.. automodule:: TFG.test.test_fitness
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: TFG.test
+   :members:
+   :undoc-members:
+   :show-inheritance:

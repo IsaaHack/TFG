@@ -1,0 +1,458 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TFG.algorithms.ga &mdash; TFG 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            TFG
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TFG</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">TFG.algorithms.ga</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for TFG.algorithms.ga</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">Algorithm</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">MESSAGE_TAG</span><span class="p">,</span> <span class="n">FINISH_TAG</span>
+<span class="kn">import</span> <span class="nn">pickle</span><span class="o">,</span> <span class="nn">zlib</span>
+
+<div class="viewcode-block" id="GA">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.ga.GA">[docs]</a>
+<span class="k">class</span> <span class="nc">GA</span><span class="p">(</span><span class="n">Algorithm</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;Genetic Algorithm (GA) implementation for solving optimization problems.</span>
+<span class="sd">    This class provides a flexible and extensible framework for applying genetic algorithms to a wide range of problems. </span>
+<span class="sd">    It supports both single-process and MPI-based parallel execution, with features such as tournament selection, </span>
+<span class="sd">    elitism, population reset, and customizable mutation and crossover rates.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        population_size (int): Number of individuals in the population.</span>
+<span class="sd">        mutation_rate (float): Probability of mutation for each individual.</span>
+<span class="sd">        crossover_rate (float): Probability of crossover between individuals.</span>
+<span class="sd">        seed (int or None): Random seed for reproducibility.</span>
+<span class="sd">        tournament_size (int): Number of individuals in each tournament selection.</span>
+<span class="sd">        reset_threshold (int): Number of generations without improvement before resetting the population.</span>
+<span class="sd">        executer (str): Execution mode (e.g., &#39;single&#39;).</span>
+<span class="sd">        </span>
+<span class="sd">    Methods:</span>
+<span class="sd">        __init__(self, problem, population_size=100, mutation_rate=0.08, crossover_rate=0.7, seed=None, tournament_size=3, reset_threshold=100, executer=&#39;single&#39;):</span>
+<span class="sd">            Initializes the genetic algorithm with the specified parameters and validates input ranges.</span>
+<span class="sd">        initialize_population(self):</span>
+<span class="sd">            Initializes the population using the problem&#39;s generate_solution method.</span>
+<span class="sd">        selection(self, population, fitnesess):</span>
+<span class="sd">            Performs tournament selection to create a new population from the current one.</span>
+<span class="sd">        reset_population(self, best, best_fit):</span>
+<span class="sd">            Resets the population, preserving the best individual and its fitness.</span>
+<span class="sd">        fit(self, iterations, timelimit=None, verbose=True):</span>
+<span class="sd">            Runs the genetic algorithm for a specified number of generations or until a time limit is reached.</span>
+<span class="sd">            Applies selection, crossover, mutation, and elitism, with optional population reset.</span>
+<span class="sd">            Returns the best solution found.</span>
+<span class="sd">        fit_mpi(self, comm, rank, timelimit, sendto, receivefrom, verbose=True):</span>
+<span class="sd">            Runs the genetic algorithm in parallel using MPI, exchanging best solutions between processes.</span>
+<span class="sd">            Returns the best solution found by this process.</span>
+
+<span class="sd">        ValueError: </span>
+<span class="sd">        </span>
+<span class="sd">        If any parameter is out of its valid range or if required arguments are missing.</span>
+<span class="sd">        - The problem instance must implement &#39;fitness&#39;, &#39;generate_solution&#39;, &#39;mutation&#39;, and &#39;crossover&#39; methods.</span>
+<span class="sd">        - Elitism ensures the best solution is retained across generations.</span>
+<span class="sd">        - Population reset helps avoid stagnation if no improvement is observed for a specified threshold.</span>
+<span class="sd">        - MPI-based execution allows for distributed optimization and solution sharing between processes.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<div class="viewcode-block" id="GA.__init__">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.ga.GA.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">population_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">mutation_rate</span><span class="o">=</span><span class="mf">0.08</span><span class="p">,</span> <span class="n">crossover_rate</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tournament_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">reset_threshold</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">executer</span><span class="o">=</span><span class="s1">&#39;single&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the genetic algorithm with the specified parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            problem: The problem instance to be solved. Must implement &#39;fitness&#39;, &#39;generate_solution&#39;, &#39;mutation&#39;, and &#39;crossover&#39; methods.</span>
+<span class="sd">            population_size (int, optional): Number of individuals in the population. Must be greater than 0. Default is 100.</span>
+<span class="sd">            mutation_rate (float, optional): Probability of mutation for each individual. Must be between 0 and 1. Default is 0.08.</span>
+<span class="sd">            crossover_rate (float, optional): Probability of crossover between individuals. Must be between 0 and 1. Default is 0.7.</span>
+<span class="sd">            seed (int, optional): Random seed for reproducibility. Default is None.</span>
+<span class="sd">            tournament_size (int, optional): Number of individuals participating in tournament selection. Must be greater than 0. Default is 3.</span>
+<span class="sd">            reset_threshold (int, optional): Number of generations without improvement before resetting the population. Default is 100.</span>
+<span class="sd">            executer (str, optional): Execution mode, e.g., &#39;single&#39;. Default is &#39;single&#39;.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If any of the parameters are out of their valid ranges.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">required_methods</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;fitness&#39;</span><span class="p">,</span> <span class="s1">&#39;generate_solution&#39;</span><span class="p">,</span> <span class="s1">&#39;mutation&#39;</span><span class="p">,</span> <span class="s1">&#39;crossover&#39;</span><span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="n">required_methods</span><span class="p">,</span> <span class="n">executer</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">population_size</span> <span class="o">=</span> <span class="n">population_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutation_rate</span> <span class="o">=</span> <span class="n">mutation_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">crossover_rate</span> <span class="o">=</span> <span class="n">crossover_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tournament_size</span> <span class="o">=</span> <span class="n">tournament_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset_threshold</span> <span class="o">=</span> <span class="n">reset_threshold</span>
+
+        <span class="k">if</span> <span class="n">population_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Population size must be greater than 0.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">mutation_rate</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">mutation_rate</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Mutation rate must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">crossover_rate</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">crossover_rate</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Crossover rate must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">tournament_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Print frequency must be greater than 0.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GA.initialize_population">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.ga.GA.initialize_population">[docs]</a>
+    <span class="k">def</span> <span class="nf">initialize_population</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the population for the genetic algorithm.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list: A list of solutions generated by the problem&#39;s generate_solution method,</span>
+<span class="sd">                  with the number of solutions equal to the specified population size.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_solution</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">population_size</span><span class="p">)</span></div>
+
+            
+<div class="viewcode-block" id="GA.selection">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.ga.GA.selection">[docs]</a>
+    <span class="k">def</span> <span class="nf">selection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">,</span> <span class="n">fitnesess</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Selects a new population from the current population using tournament selection.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            population (np.ndarray): The current population of individuals, typically a 2D array where each row represents an individual.</span>
+<span class="sd">            fitnesess (np.ndarray): Array of fitness values corresponding to each individual in the population.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: The new population selected via tournament selection, with the same shape as the input population.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Tournament selection is performed by randomly selecting groups of individuals (of size `self.tournament_size`) and choosing the individual with the highest fitness from each group to form the new population.</span>
+<span class="sd">            - Assumes that `self.tournament_size` is defined and is an integer greater than 0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new_population</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">population</span><span class="p">)</span>
+
+        <span class="n">random_indexes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">population</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">tournament_size</span><span class="p">))</span>
+        <span class="n">best_in_each_group</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fitnesess</span><span class="p">[</span><span class="n">random_indexes</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">new_population</span> <span class="o">=</span> <span class="n">population</span><span class="p">[</span><span class="n">random_indexes</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">best_in_each_group</span><span class="p">]]</span>
+
+        <span class="k">return</span> <span class="n">new_population</span></div>
+
+    
+<div class="viewcode-block" id="GA.reset_population">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.ga.GA.reset_population">[docs]</a>
+    <span class="k">def</span> <span class="nf">reset_population</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">best</span><span class="p">,</span> <span class="n">best_fit</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resets the population for the genetic algorithm, preserving the best individual.</span>
+<span class="sd">        Parameters:</span>
+<span class="sd">            best (np.ndarray): The best individual from the previous generation.</span>
+<span class="sd">            best_fit (float): The fitness value of the best individual.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple[np.ndarray, np.ndarray]: A tuple containing the new population array and the corresponding fitness values array, </span>
+<span class="sd">            with the best individual and its fitness at the first position.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new_population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialize_population</span><span class="p">()</span>
+        <span class="n">new_population</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">best</span>
+        
+        <span class="n">fitness_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">population_size</span><span class="p">)</span>
+        <span class="n">fitness_values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">best_fit</span>
+        <span class="n">fitness_values</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">new_population</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+
+        <span class="k">return</span> <span class="n">new_population</span><span class="p">,</span> <span class="n">fitness_values</span></div>
+
+    
+<div class="viewcode-block" id="GA.fit">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.ga.GA.fit">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">timelimit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Trains the genetic algorithm for a specified number of iterations or until a time limit is reached.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            iterations (int): The maximum number of generations to run the algorithm.</span>
+<span class="sd">            timelimit (float, optional): The maximum time (in seconds) to run the algorithm. If None, runs without a time limit. Defaults to None.</span>
+<span class="sd">            verbose (bool, optional): If True, prints progress updates during execution. Defaults to True.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: The best solution found by the genetic algorithm.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If &#39;timelimit&#39; is negative or &#39;iterations&#39; is not greater than 0.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - The method initializes the population and iteratively applies selection, crossover, and mutation.</span>
+<span class="sd">            - Elitism is used to retain the best solution found so far.</span>
+<span class="sd">            - If no improvement is observed for a specified number of generations (&#39;reset_threshold&#39;), the population is reset.</span>
+<span class="sd">            - Progress and results are printed if &#39;verbose&#39; is True.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">timelimit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">timelimit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">if</span> <span class="n">timelimit</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Timelimit must be a non-negative value.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">iterations</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Iterations must be greater than 0.&quot;</span><span class="p">)</span>
+
+        <span class="n">time_start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_init</span><span class="p">(</span><span class="n">time_start</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+
+        <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialize_population</span><span class="p">()</span>
+        <span class="n">fitness_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">population</span><span class="p">)</span>
+        <span class="n">actual_generation</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">population</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)])</span>
+        <span class="n">best_fit</span> <span class="o">=</span> <span class="n">fitness_values</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)]</span>
+
+        <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_update</span><span class="p">(</span><span class="n">best_fit</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="n">actual_generation</span> <span class="o">&lt;</span> <span class="n">iterations</span> <span class="ow">and</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_start</span> <span class="o">&lt;</span> <span class="n">timelimit</span><span class="p">:</span>
+            <span class="c1"># Selection</span>
+            <span class="n">new_population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection</span><span class="p">(</span><span class="n">population</span><span class="p">,</span> <span class="n">fitness_values</span><span class="p">)</span>
+            <span class="c1"># Crossover</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">crossover</span><span class="p">(</span><span class="n">new_population</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">crossover_rate</span><span class="p">)</span>
+            <span class="c1"># Mutation</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">mutation</span><span class="p">(</span><span class="n">new_population</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mutation_rate</span><span class="p">)</span>
+
+            <span class="c1"># Evaluate fitness</span>
+            <span class="n">fitness_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">new_population</span><span class="p">)</span>
+
+            <span class="c1"># Elitism</span>
+            <span class="n">best_new_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)</span>
+            <span class="n">worst_new_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)</span>
+
+            <span class="n">best_new</span> <span class="o">=</span> <span class="n">new_population</span><span class="p">[</span><span class="n">best_new_index</span><span class="p">]</span>
+            <span class="n">best_new_fit</span> <span class="o">=</span> <span class="n">fitness_values</span><span class="p">[</span><span class="n">best_new_index</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">best_new_fit</span> <span class="o">&gt;</span> <span class="n">best_fit</span><span class="p">:</span>
+                <span class="n">best</span> <span class="o">=</span> <span class="n">best_new</span>
+                <span class="n">best_fit</span> <span class="o">=</span> <span class="n">best_new_fit</span>
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">new_population</span><span class="p">[</span><span class="n">worst_new_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">best</span>
+                <span class="n">fitness_values</span><span class="p">[</span><span class="n">worst_new_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">best_fit</span>
+                <span class="n">no_improvement</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Reset if there is not improvement</span>
+            <span class="k">if</span> <span class="n">no_improvement</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset_threshold</span><span class="p">:</span>
+                <span class="n">population</span><span class="p">,</span> <span class="n">fitness_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset_population</span><span class="p">(</span><span class="n">best</span><span class="p">,</span> <span class="n">best_fit</span><span class="p">)</span>
+                <span class="n">best_fit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)</span>
+                <span class="n">best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">population</span><span class="p">[</span><span class="n">best_fit</span><span class="p">])</span>
+                <span class="n">best_fit</span> <span class="o">=</span> <span class="n">fitness_values</span><span class="p">[</span><span class="n">best_fit</span><span class="p">]</span>
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">population</span> <span class="o">=</span> <span class="n">new_population</span>
+
+            <span class="n">actual_generation</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_update</span><span class="p">(</span><span class="n">best_fit</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_end</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">best</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="GA.fit_mpi">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.ga.GA.fit_mpi">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit_mpi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">,</span> <span class="n">sendto</span><span class="p">,</span> <span class="n">receivefrom</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Runs the genetic algorithm using MPI for parallel execution and communication between processes.</span>
+<span class="sd">        This method evolves a population of candidate solutions using selection, crossover, mutation, and elitism.</span>
+<span class="sd">        It exchanges the best solutions between MPI processes to improve convergence and diversity. The algorithm</span>
+<span class="sd">        runs until the specified time limit is reached.</span>
+<span class="sd">        Parameters:</span>
+<span class="sd">            comm: MPI communicator object used for inter-process communication.</span>
+<span class="sd">            rank (int): The rank (ID) of the current MPI process.</span>
+<span class="sd">            timelimit (float): Maximum allowed runtime in seconds. Must be non-negative.</span>
+<span class="sd">            sendto (int): Rank of the process to which the best solution should be sent.</span>
+<span class="sd">            receivefrom (int): Rank of the process from which to receive the best solution.</span>
+<span class="sd">            verbose (bool, optional): If True, prints progress information. Defaults to True.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: The best solution found by this process.</span>
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If `timelimit` is negative.</span>
+<span class="sd">        Notes:</span>
+<span class="sd">            - The method uses compressed and pickled data for MPI communication.</span>
+<span class="sd">            - Implements elitism and population reset if no improvement is observed for a threshold number of generations.</span>
+<span class="sd">            - The best solution is sent to the next process and received from the previous process in a ring topology.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">timelimit</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Timelimit must be a non-negative value.&quot;</span><span class="p">)</span>
+            
+        <span class="n">iterations</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+            
+        <span class="n">time_start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_init</span><span class="p">(</span><span class="n">time_start</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">)</span>
+
+        <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialize_population</span><span class="p">()</span>
+        <span class="n">fitness_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">population</span><span class="p">)</span>
+        <span class="n">actual_generation</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">population</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)])</span>
+        <span class="n">best_fit</span> <span class="o">=</span> <span class="n">fitness_values</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)]</span>
+
+        <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_update</span><span class="p">(</span><span class="n">best_fit</span><span class="p">,</span> <span class="n">rank</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="n">actual_generation</span> <span class="o">&lt;</span> <span class="n">iterations</span> <span class="ow">and</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_start</span> <span class="o">&lt;</span> <span class="n">timelimit</span><span class="p">:</span>
+            <span class="c1"># Selection</span>
+            <span class="n">new_population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection</span><span class="p">(</span><span class="n">population</span><span class="p">,</span> <span class="n">fitness_values</span><span class="p">)</span>
+            <span class="c1"># Crossover</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">crossover</span><span class="p">(</span><span class="n">new_population</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">crossover_rate</span><span class="p">)</span>
+            <span class="c1"># Mutation</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">mutation</span><span class="p">(</span><span class="n">new_population</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mutation_rate</span><span class="p">)</span>
+
+            <span class="c1"># Evaluate fitness</span>
+            <span class="n">fitness_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">new_population</span><span class="p">)</span>
+
+            <span class="c1"># Elitism</span>
+            <span class="n">best_new_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)</span>
+            <span class="n">worst_new_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)</span>
+
+            <span class="n">best_new</span> <span class="o">=</span> <span class="n">new_population</span><span class="p">[</span><span class="n">best_new_index</span><span class="p">]</span>
+            <span class="n">best_new_fit</span> <span class="o">=</span> <span class="n">fitness_values</span><span class="p">[</span><span class="n">best_new_index</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">best_new_fit</span> <span class="o">&gt;</span> <span class="n">best_fit</span><span class="p">:</span>
+                <span class="n">best</span> <span class="o">=</span> <span class="n">best_new</span>
+                <span class="n">best_fit</span> <span class="o">=</span> <span class="n">best_new_fit</span>
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="c1">#Enviar la mejor solución a el siguiente proceso</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">best</span><span class="p">,</span> <span class="n">best_fit</span><span class="p">)</span>
+                <span class="n">data_serialized</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+                <span class="n">comm</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data_serialized</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">sendto</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">new_population</span><span class="p">[</span><span class="n">worst_new_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">best</span>
+                <span class="n">fitness_values</span><span class="p">[</span><span class="n">worst_new_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">best_fit</span>
+                <span class="n">no_improvement</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Reset if there is not improvement</span>
+            <span class="k">if</span> <span class="n">no_improvement</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset_threshold</span><span class="p">:</span>
+                <span class="n">population</span><span class="p">,</span> <span class="n">fitness_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset_population</span><span class="p">(</span><span class="n">best</span><span class="p">,</span> <span class="n">best_fit</span><span class="p">)</span>
+                <span class="n">best_fit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)</span>
+                <span class="n">best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">population</span><span class="p">[</span><span class="n">best_fit</span><span class="p">])</span>
+                <span class="n">best_fit</span> <span class="o">=</span> <span class="n">fitness_values</span><span class="p">[</span><span class="n">best_fit</span><span class="p">]</span>
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">population</span> <span class="o">=</span> <span class="n">new_population</span>
+
+            <span class="c1"># Recibir el mejor resultado del proceso receivefrom</span>
+            <span class="n">hay_mensaje</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Iprobe</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">receivefrom</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+            <span class="k">while</span> <span class="n">hay_mensaje</span><span class="p">:</span>
+                <span class="n">rank_received</span><span class="p">,</span> <span class="n">best_received</span><span class="p">,</span> <span class="n">best_fit_received</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">receivefrom</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)))</span>
+                <span class="k">if</span> <span class="n">best_fit_received</span> <span class="o">&gt;</span> <span class="n">best_fit</span><span class="p">:</span>
+                    <span class="n">best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">best_received</span><span class="p">)</span>
+                    <span class="n">best_fit</span> <span class="o">=</span> <span class="n">best_fit_received</span>
+                    <span class="c1"># Sustituir la peor solución por la mejor recibida</span>
+                    <span class="n">worst_new_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)</span>
+                    <span class="n">new_population</span><span class="p">[</span><span class="n">worst_new_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">best</span>
+                    <span class="n">fitness_values</span><span class="p">[</span><span class="n">worst_new_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">best_fit</span>
+                <span class="k">if</span> <span class="n">rank_received</span> <span class="o">!=</span> <span class="n">rank</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">best</span><span class="p">,</span> <span class="n">best_fit</span><span class="p">)</span>
+                    <span class="n">data_serialized</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+                    <span class="n">comm</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data_serialized</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">sendto</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+                <span class="n">hay_mensaje</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Iprobe</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">receivefrom</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+
+            <span class="n">actual_generation</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_update</span><span class="p">(</span><span class="n">best_fit</span><span class="p">,</span> <span class="n">rank</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_end</span><span class="p">()</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">best</span><span class="p">,</span> <span class="n">best_fit</span><span class="p">)</span>
+        <span class="n">data_serialized</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+        <span class="n">comm</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data_serialized</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">sendto</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">FINISH_TAG</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">best</span><span class="p">)</span></div>
+</div>
+
+    
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, IsaaHack.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

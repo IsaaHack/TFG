@@ -1,0 +1,953 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TFG.algorithms package &mdash; TFG 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            TFG
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">TFG.algorithms package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-TFG.algorithms.aco">TFG.algorithms.aco module</a><ul>
+<li><a class="reference internal" href="#TFG.algorithms.aco.ACO"><code class="docutils literal notranslate"><span class="pre">ACO</span></code></a><ul>
+<li><a class="reference internal" href="#TFG.algorithms.aco.ACO.fit"><code class="docutils literal notranslate"><span class="pre">ACO.fit()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.aco.ACO.fit_mpi"><code class="docutils literal notranslate"><span class="pre">ACO.fit_mpi()</span></code></a></li>
+<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">ACO.fit()</span></code></a></li>
+<li><a class="reference internal" href="#id1"><code class="docutils literal notranslate"><span class="pre">ACO.fit_mpi()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-TFG.algorithms.algorithm">TFG.algorithms.algorithm module</a><ul>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm"><code class="docutils literal notranslate"><span class="pre">Algorithm</span></code></a><ul>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.required_methods"><code class="docutils literal notranslate"><span class="pre">Algorithm.required_methods</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.executer"><code class="docutils literal notranslate"><span class="pre">Algorithm.executer</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.progress_bar"><code class="docutils literal notranslate"><span class="pre">Algorithm.progress_bar</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.print_mode"><code class="docutils literal notranslate"><span class="pre">Algorithm.print_mode</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.max_iter"><code class="docutils literal notranslate"><span class="pre">Algorithm.max_iter</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.timelimit"><code class="docutils literal notranslate"><span class="pre">Algorithm.timelimit</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.start_time"><code class="docutils literal notranslate"><span class="pre">Algorithm.start_time</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.seed"><code class="docutils literal notranslate"><span class="pre">Algorithm.seed</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.__init__"><code class="docutils literal notranslate"><span class="pre">Algorithm.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.init_seed"><code class="docutils literal notranslate"><span class="pre">Algorithm.init_seed()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.check_required_methods"><code class="docutils literal notranslate"><span class="pre">Algorithm.check_required_methods()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.print_init"><code class="docutils literal notranslate"><span class="pre">Algorithm.print_init()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.print_update"><code class="docutils literal notranslate"><span class="pre">Algorithm.print_update()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.print_end"><code class="docutils literal notranslate"><span class="pre">Algorithm.print_end()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm.fit"><code class="docutils literal notranslate"><span class="pre">Algorithm.fit()</span></code></a></li>
+<li><a class="reference internal" href="#id2"><code class="docutils literal notranslate"><span class="pre">Algorithm.check_required_methods()</span></code></a></li>
+<li><a class="reference internal" href="#id3"><code class="docutils literal notranslate"><span class="pre">Algorithm.fit()</span></code></a></li>
+<li><a class="reference internal" href="#id4"><code class="docutils literal notranslate"><span class="pre">Algorithm.init_seed()</span></code></a></li>
+<li><a class="reference internal" href="#id5"><code class="docutils literal notranslate"><span class="pre">Algorithm.print_end()</span></code></a></li>
+<li><a class="reference internal" href="#id6"><code class="docutils literal notranslate"><span class="pre">Algorithm.print_init()</span></code></a></li>
+<li><a class="reference internal" href="#id7"><code class="docutils literal notranslate"><span class="pre">Algorithm.print_update()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-TFG.algorithms.ga">TFG.algorithms.ga module</a><ul>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA"><code class="docutils literal notranslate"><span class="pre">GA</span></code></a><ul>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.population_size"><code class="docutils literal notranslate"><span class="pre">GA.population_size</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.mutation_rate"><code class="docutils literal notranslate"><span class="pre">GA.mutation_rate</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.crossover_rate"><code class="docutils literal notranslate"><span class="pre">GA.crossover_rate</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.seed"><code class="docutils literal notranslate"><span class="pre">GA.seed</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.tournament_size"><code class="docutils literal notranslate"><span class="pre">GA.tournament_size</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.reset_threshold"><code class="docutils literal notranslate"><span class="pre">GA.reset_threshold</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.executer"><code class="docutils literal notranslate"><span class="pre">GA.executer</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.__init__"><code class="docutils literal notranslate"><span class="pre">GA.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.initialize_population"><code class="docutils literal notranslate"><span class="pre">GA.initialize_population()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.selection"><code class="docutils literal notranslate"><span class="pre">GA.selection()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.reset_population"><code class="docutils literal notranslate"><span class="pre">GA.reset_population()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.fit"><code class="docutils literal notranslate"><span class="pre">GA.fit()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.fit_mpi"><code class="docutils literal notranslate"><span class="pre">GA.fit_mpi()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.ga.GA.ValueError"><code class="docutils literal notranslate"><span class="pre">GA.ValueError()</span></code></a></li>
+<li><a class="reference internal" href="#id8"><code class="docutils literal notranslate"><span class="pre">GA.fit()</span></code></a></li>
+<li><a class="reference internal" href="#id9"><code class="docutils literal notranslate"><span class="pre">GA.fit_mpi()</span></code></a></li>
+<li><a class="reference internal" href="#id10"><code class="docutils literal notranslate"><span class="pre">GA.initialize_population()</span></code></a></li>
+<li><a class="reference internal" href="#id11"><code class="docutils literal notranslate"><span class="pre">GA.reset_population()</span></code></a></li>
+<li><a class="reference internal" href="#id12"><code class="docutils literal notranslate"><span class="pre">GA.selection()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-TFG.algorithms.pso">TFG.algorithms.pso module</a><ul>
+<li><a class="reference internal" href="#TFG.algorithms.pso.PSO"><code class="docutils literal notranslate"><span class="pre">PSO</span></code></a><ul>
+<li><a class="reference internal" href="#TFG.algorithms.pso.PSO.swarm_size"><code class="docutils literal notranslate"><span class="pre">PSO.swarm_size</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.pso.PSO.inertia_weight"><code class="docutils literal notranslate"><span class="pre">PSO.inertia_weight</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.pso.PSO.cognitive_weight"><code class="docutils literal notranslate"><span class="pre">PSO.cognitive_weight</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.pso.PSO.social_weight"><code class="docutils literal notranslate"><span class="pre">PSO.social_weight</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.pso.PSO.seed"><code class="docutils literal notranslate"><span class="pre">PSO.seed</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.pso.PSO.reset_threshold"><code class="docutils literal notranslate"><span class="pre">PSO.reset_threshold</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.pso.PSO.__init__"><code class="docutils literal notranslate"><span class="pre">PSO.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.pso.PSO.fit"><code class="docutils literal notranslate"><span class="pre">PSO.fit()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.algorithms.pso.PSO.fit_mpi"><code class="docutils literal notranslate"><span class="pre">PSO.fit_mpi()</span></code></a></li>
+<li><a class="reference internal" href="#id13"><code class="docutils literal notranslate"><span class="pre">PSO.fit()</span></code></a></li>
+<li><a class="reference internal" href="#id14"><code class="docutils literal notranslate"><span class="pre">PSO.fit_mpi()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-TFG.algorithms">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">TFG</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">TFG.algorithms package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/TFG.algorithms.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="tfg-algorithms-package">
+<h1>TFG.algorithms package<a class="headerlink" href="#tfg-algorithms-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-TFG.algorithms.aco">
+<span id="tfg-algorithms-aco-module"></span><h2>TFG.algorithms.aco module<a class="headerlink" href="#module-TFG.algorithms.aco" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="TFG.algorithms.aco.ACO">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">TFG.algorithms.aco.</span></span><span class="sig-name descname"><span class="pre">ACO</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">problem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colony_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaporation_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">executer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'single'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/aco.html#ACO"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.aco.ACO" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm" title="TFG.algorithms.algorithm.Algorithm"><code class="xref py py-class docutils literal notranslate"><span class="pre">Algorithm</span></code></a></p>
+<p>Ant Colony Optimization (ACO) metaheuristic algorithm.
+This class implements the Ant Colony Optimization (ACO) algorithm for solving combinatorial optimization problems.
+ACO is inspired by the foraging behavior of ants and uses a colony of artificial ants to construct solutions and
+update pheromone trails to guide the search for optimal solutions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>problem</strong> (<em>object</em>) – An object representing the optimization problem. Must implement the required methods:</p></li>
+<li><p><strong>colony_size</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of ants in the colony. Must be greater than 0. Default is 50.</p></li>
+<li><p><strong>evaporation_rate</strong> (<em>float</em><em>, </em><em>optional</em>) – Rate at which pheromones evaporate. Must be between 0 and 1 (exclusive). Default is 0.1.</p></li>
+<li><p><strong>alpha</strong> (<em>float</em><em>, </em><em>optional</em>) – Relative importance of pheromone. Must be greater than 0. Default is 1.0.</p></li>
+<li><p><strong>beta</strong> (<em>float</em><em>, </em><em>optional</em>) – Relative importance of heuristic information. Must be greater than 0. Default is 2.0.</p></li>
+<li><p><strong>seed</strong> (<em>int</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – Random seed for reproducibility. Default is None.</p></li>
+<li><p><strong>reset_threshold</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of iterations without improvement before pheromone reset. Must be greater than 0. Default is 100.</p></li>
+<li><p><strong>executer</strong> (<em>str</em><em>, </em><em>optional</em>) – Execution mode, e.g., ‘single’ or other supported modes. Default is ‘single’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If any parameter is outside its valid range.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.aco.ACO.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/aco.html#ACO.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.aco.ACO.fit" title="Link to this definition"></a></dt>
+<dd><p>Runs the ACO algorithm for a specified number of iterations or until a time limit is reached.
+Returns the best solution found.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.aco.ACO.fit_mpi">
+<span class="sig-name descname"><span class="pre">fit_mpi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sendto</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">receivefrom</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/aco.html#ACO.fit_mpi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.aco.ACO.fit_mpi" title="Link to this definition"></a></dt>
+<dd><p>Executes the ACO algorithm in a distributed manner using MPI for parallel processing.
+Returns the best solution found by this process.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/aco.html#ACO.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd><p>Fits the Ant Colony Optimization (ACO) algorithm to the given problem instance.
+This method runs the ACO metaheuristic for a specified number of iterations or until a time limit is reached.
+It manages the pheromone initialization and update, solution construction, evaluation, and tracks the best solution found.
+If no improvement is observed for a number of iterations defined by <cite>self.reset_threshold</cite>, the pheromones are reset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>iterations</strong> (<em>int</em>) – The maximum number of iterations to run the algorithm. Must be greater than 0.</p></li>
+<li><p><strong>timelimit</strong> (<em>float</em><em>, </em><em>optional</em>) – The maximum time (in seconds) to run the algorithm. If None, runs without a time limit.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, prints progress information during execution.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The best solution found during the optimization process.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <cite>timelimit</cite> is negative or if <cite>iterations</cite> is not greater than 0.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">fit_mpi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sendto</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">receivefrom</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/aco.html#ACO.fit_mpi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd><p>Executes the Ant Colony Optimization (ACO) algorithm in a distributed manner using MPI for parallel processing.
+This method coordinates multiple processes to collaboratively solve an optimization problem by sharing the best solutions found among them. Each process constructs solutions, evaluates them, updates pheromones, and communicates the best solutions with neighboring processes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>comm</strong> – MPI communicator object used for inter-process communication.</p></li>
+<li><p><strong>rank</strong> (<em>int</em>) – The rank (ID) of the current process.</p></li>
+<li><p><strong>timelimit</strong> (<em>float</em>) – Maximum allowed time (in seconds) for the algorithm to run. Must be non-negative.</p></li>
+<li><p><strong>sendto</strong> (<em>int</em>) – Rank of the process to which the best solution should be sent.</p></li>
+<li><p><strong>receivefrom</strong> (<em>int</em>) – Rank of the process from which to receive the best solution.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, prints progress information. Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <cite>timelimit</cite> is negative.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The best solution found by this process during execution.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-TFG.algorithms.algorithm">
+<span id="tfg-algorithms-algorithm-module"></span><h2>TFG.algorithms.algorithm module<a class="headerlink" href="#module-TFG.algorithms.algorithm" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">TFG.algorithms.algorithm.</span></span><span class="sig-name descname"><span class="pre">Algorithm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">problem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_methods</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">executer_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hybrid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">executer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Base class for optimization algorithms that operate on a given problem instance and support multiple execution strategies.
+This abstract class provides a framework for implementing optimization algorithms, handling the initialization of execution backends (single-core, multi-core, GPU, or hybrid), enforcing required problem methods, managing random seeds, and offering progress bar utilities for iterative or time-limited algorithms.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.required_methods">
+<span class="sig-name descname"><span class="pre">required_methods</span></span><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.required_methods" title="Link to this definition"></a></dt>
+<dd><p>List or set of method names that must be implemented by the problem.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.executer">
+<span class="sig-name descname"><span class="pre">executer</span></span><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.executer" title="Link to this definition"></a></dt>
+<dd><p>The execution backend used to run the algorithm (single-core, multi-core, GPU, or hybrid).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.progress_bar">
+<span class="sig-name descname"><span class="pre">progress_bar</span></span><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.progress_bar" title="Link to this definition"></a></dt>
+<dd><p>Progress bar object for tracking algorithm progress (initialized as None).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.print_mode">
+<span class="sig-name descname"><span class="pre">print_mode</span></span><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.print_mode" title="Link to this definition"></a></dt>
+<dd><p>Mode for progress bar updates (‘iterations’ or ‘timelimit’).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.max_iter">
+<span class="sig-name descname"><span class="pre">max_iter</span></span><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.max_iter" title="Link to this definition"></a></dt>
+<dd><p>Maximum number of iterations (if applicable).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.timelimit">
+<span class="sig-name descname"><span class="pre">timelimit</span></span><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.timelimit" title="Link to this definition"></a></dt>
+<dd><p>Time limit in seconds (if applicable).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.start_time">
+<span class="sig-name descname"><span class="pre">start_time</span></span><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.start_time" title="Link to this definition"></a></dt>
+<dd><p>Start time for time-limited progress tracking.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.seed">
+<span class="sig-name descname"><span class="pre">seed</span></span><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.seed" title="Link to this definition"></a></dt>
+<dd><p>Random seed for reproducibility.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">problem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_methods</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">executer_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hybrid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">executer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.__init__" title="Link to this definition"></a></dt>
+<dd><p>Raises ValueError if an unknown or invalid executer type is provided.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.init_seed">
+<span class="sig-name descname"><span class="pre">init_seed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.init_seed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.init_seed" title="Link to this definition"></a></dt>
+<dd><p>Sets the random seed for both NumPy and CuPy random number generators for reproducibility.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.check_required_methods">
+<span class="sig-name descname"><span class="pre">check_required_methods</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.check_required_methods"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.check_required_methods" title="Link to this definition"></a></dt>
+<dd><p>Ensures that the problem instance implements all required methods.
+Raises ValueError if any required method is missing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.print_init">
+<span class="sig-name descname"><span class="pre">print_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.print_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.print_init" title="Link to this definition"></a></dt>
+<dd><p>Initializes and configures the progress bar based on the stopping criterion (iterations or time limit).
+Raises ValueError for invalid stopping criteria.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.print_update">
+<span class="sig-name descname"><span class="pre">print_update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">best_fit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.print_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.print_update" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.print_end">
+<span class="sig-name descname"><span class="pre">print_end</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.print_end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.print_end" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.algorithm.Algorithm.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.algorithm.Algorithm.fit" title="Link to this definition"></a></dt>
+<dd><p>Abstract method to be implemented by subclasses, defining the training or optimization logic.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">check_required_methods</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.check_required_methods"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd><p>Checks whether the problem instance implements all required methods.</p>
+<p>Iterates over the list of required method names specified in <cite>self.required_methods</cite>
+and verifies that each method exists in the <cite>self.problem</cite> object. If any required
+method is missing, raises a ValueError indicating which method is not implemented.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If the problem class does not implement a required method.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id3">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd><p>Trains or fits the model to the provided data.</p>
+<p>This method should be implemented by subclasses to define the training logic
+for the algorithm. It typically processes input data and adjusts internal
+parameters to optimize performance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If the method is not implemented in a subclass.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">init_seed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.init_seed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd><p>Initializes the random seed for both NumPy and CuPy random number generators.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>seed</strong> (<em>int</em>) – The seed value to set for reproducibility.</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Sets:</dt><dd><p>self.seed (int): Stores the provided seed value.
+np.random.seed: Sets the seed for NumPy’s random number generator.
+cp.random.seed: Sets the seed for CuPy’s random number generator.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">print_end</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.print_end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd><p>Closes and resets the progress bar if it exists.</p>
+<p>This method checks if the <cite>progress_bar</cite> attribute is not <cite>None</cite>. If so, it closes the progress bar and sets the attribute to <cite>None</cite> to clean up resources.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">print_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time_start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.print_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd><p>Initializes and configures the progress bar for the algorithm based on the stopping criterion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>time_start</strong> (<em>float</em>) – The starting time of the algorithm, used for time-based progress tracking.</p></li>
+<li><p><strong>iterations</strong> (<em>int</em><em> or </em><em>float</em>) – The maximum number of iterations to run. Use np.inf for unlimited iterations.</p></li>
+<li><p><strong>timelimit</strong> (<em>float</em>) – The time limit in seconds for the algorithm to run. Use np.inf for unlimited time.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If both iterations and timelimit are set to np.inf (unlimited).</p></li>
+<li><p><strong>ValueError</strong> – If iterations is less than or equal to 0.</p></li>
+<li><p><strong>ValueError</strong> – If timelimit is less than or equal to 0.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Side Effects:</dt><dd><p>Sets the progress bar mode (‘timelimit’ or ‘iterations’), initializes the progress bar,
+and stores relevant parameters as instance attributes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">print_update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">best_fit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/algorithm.html#Algorithm.print_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id7" title="Link to this definition"></a></dt>
+<dd><p>Updates the progress bar and displays the current best fitness value.</p>
+<p>Depending on the print mode, either updates the progress bar based on elapsed time
+(‘timelimit’ mode) or by a specified number of iterations. Also sets a postfix string
+to display the best fitness value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>best_fit</strong> (<em>float</em>) – The current best fitness value to display.</p></li>
+<li><p><strong>n_iters</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of iterations to update the progress bar by (default is 1).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-TFG.algorithms.ga">
+<span id="tfg-algorithms-ga-module"></span><h2>TFG.algorithms.ga module<a class="headerlink" href="#module-TFG.algorithms.ga" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">TFG.algorithms.ga.</span></span><span class="sig-name descname"><span class="pre">GA</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">problem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">population_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mutation_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crossover_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tournament_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">executer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'single'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.ga.GA" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm" title="TFG.algorithms.algorithm.Algorithm"><code class="xref py py-class docutils literal notranslate"><span class="pre">Algorithm</span></code></a></p>
+<p>Genetic Algorithm (GA) implementation for solving optimization problems.
+This class provides a flexible and extensible framework for applying genetic algorithms to a wide range of problems.
+It supports both single-process and MPI-based parallel execution, with features such as tournament selection,
+elitism, population reset, and customizable mutation and crossover rates.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.population_size">
+<span class="sig-name descname"><span class="pre">population_size</span></span><a class="headerlink" href="#TFG.algorithms.ga.GA.population_size" title="Link to this definition"></a></dt>
+<dd><p>Number of individuals in the population.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.mutation_rate">
+<span class="sig-name descname"><span class="pre">mutation_rate</span></span><a class="headerlink" href="#TFG.algorithms.ga.GA.mutation_rate" title="Link to this definition"></a></dt>
+<dd><p>Probability of mutation for each individual.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.crossover_rate">
+<span class="sig-name descname"><span class="pre">crossover_rate</span></span><a class="headerlink" href="#TFG.algorithms.ga.GA.crossover_rate" title="Link to this definition"></a></dt>
+<dd><p>Probability of crossover between individuals.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.seed">
+<span class="sig-name descname"><span class="pre">seed</span></span><a class="headerlink" href="#TFG.algorithms.ga.GA.seed" title="Link to this definition"></a></dt>
+<dd><p>Random seed for reproducibility.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.tournament_size">
+<span class="sig-name descname"><span class="pre">tournament_size</span></span><a class="headerlink" href="#TFG.algorithms.ga.GA.tournament_size" title="Link to this definition"></a></dt>
+<dd><p>Number of individuals in each tournament selection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.reset_threshold">
+<span class="sig-name descname"><span class="pre">reset_threshold</span></span><a class="headerlink" href="#TFG.algorithms.ga.GA.reset_threshold" title="Link to this definition"></a></dt>
+<dd><p>Number of generations without improvement before resetting the population.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.executer">
+<span class="sig-name descname"><span class="pre">executer</span></span><a class="headerlink" href="#TFG.algorithms.ga.GA.executer" title="Link to this definition"></a></dt>
+<dd><p>Execution mode (e.g., ‘single’).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">problem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">population_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mutation_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">crossover_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tournament_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">executer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'single'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.ga.GA.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initializes the genetic algorithm with the specified parameters and validates input ranges.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.initialize_population">
+<span class="sig-name descname"><span class="pre">initialize_population</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA.initialize_population"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.ga.GA.initialize_population" title="Link to this definition"></a></dt>
+<dd><p>Initializes the population using the problem’s generate_solution method.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.selection">
+<span class="sig-name descname"><span class="pre">selection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">population</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fitnesess</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA.selection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.ga.GA.selection" title="Link to this definition"></a></dt>
+<dd><p>Performs tournament selection to create a new population from the current one.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.reset_population">
+<span class="sig-name descname"><span class="pre">reset_population</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">best</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">best_fit</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA.reset_population"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.ga.GA.reset_population" title="Link to this definition"></a></dt>
+<dd><p>Resets the population, preserving the best individual and its fitness.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.ga.GA.fit" title="Link to this definition"></a></dt>
+<dd><p>Runs the genetic algorithm for a specified number of generations or until a time limit is reached.
+Applies selection, crossover, mutation, and elitism, with optional population reset.
+Returns the best solution found.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.fit_mpi">
+<span class="sig-name descname"><span class="pre">fit_mpi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sendto</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">receivefrom</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA.fit_mpi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.ga.GA.fit_mpi" title="Link to this definition"></a></dt>
+<dd><p>Runs the genetic algorithm in parallel using MPI, exchanging best solutions between processes.
+Returns the best solution found by this process.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.ga.GA.ValueError">
+<span class="sig-name descname"><span class="pre">ValueError</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#TFG.algorithms.ga.GA.ValueError" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">If</span> <span class="pre">any</span> <span class="pre">parameter</span> <span class="pre">is</span> <span class="pre">out</span> <span class="pre">of</span> <span class="pre">its</span> <span class="pre">valid</span> <span class="pre">range</span> <span class="pre">or</span> <span class="pre">if</span> <span class="pre">required</span> <span class="pre">arguments</span> <span class="pre">are</span> <span class="pre">missing.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">-</span> <span class="pre">The</span> <span class="pre">problem</span> <span class="pre">instance</span> <span class="pre">must</span> <span class="pre">implement</span> <span class="pre">'fitness',</span> <span class="pre">'generate_solution',</span> <span class="pre">'mutation',</span> <span class="pre">and</span> <span class="pre">'crossover'</span> <span class="pre">methods.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">-</span> <span class="pre">Elitism</span> <span class="pre">ensures</span> <span class="pre">the</span> <span class="pre">best</span> <span class="pre">solution</span> <span class="pre">is</span> <span class="pre">retained</span> <span class="pre">across</span> <span class="pre">generations.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">-</span> <span class="pre">Population</span> <span class="pre">reset</span> <span class="pre">helps</span> <span class="pre">avoid</span> <span class="pre">stagnation</span> <span class="pre">if</span> <span class="pre">no</span> <span class="pre">improvement</span> <span class="pre">is</span> <span class="pre">observed</span> <span class="pre">for</span> <span class="pre">a</span> <span class="pre">specified</span> <span class="pre">threshold.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">-</span> <span class="pre">MPI-based</span> <span class="pre">execution</span> <span class="pre">allows</span> <span class="pre">for</span> <span class="pre">distributed</span> <span class="pre">optimization</span> <span class="pre">and</span> <span class="pre">solution</span> <span class="pre">sharing</span> <span class="pre">between</span> <span class="pre">processes.</span></span></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id8" title="Link to this definition"></a></dt>
+<dd><p>Trains the genetic algorithm for a specified number of iterations or until a time limit is reached.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>iterations</strong> (<em>int</em>) – The maximum number of generations to run the algorithm.</p></li>
+<li><p><strong>timelimit</strong> (<em>float</em><em>, </em><em>optional</em>) – The maximum time (in seconds) to run the algorithm. If None, runs without a time limit. Defaults to None.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, prints progress updates during execution. Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The best solution found by the genetic algorithm.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If ‘timelimit’ is negative or ‘iterations’ is not greater than 0.</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>The method initializes the population and iteratively applies selection, crossover, and mutation.</p></li>
+<li><p>Elitism is used to retain the best solution found so far.</p></li>
+<li><p>If no improvement is observed for a specified number of generations (‘reset_threshold’), the population is reset.</p></li>
+<li><p>Progress and results are printed if ‘verbose’ is True.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id9">
+<span class="sig-name descname"><span class="pre">fit_mpi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sendto</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">receivefrom</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA.fit_mpi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id9" title="Link to this definition"></a></dt>
+<dd><p>Runs the genetic algorithm using MPI for parallel execution and communication between processes.
+This method evolves a population of candidate solutions using selection, crossover, mutation, and elitism.
+It exchanges the best solutions between MPI processes to improve convergence and diversity. The algorithm
+runs until the specified time limit is reached.
+:param comm: MPI communicator object used for inter-process communication.
+:param rank: The rank (ID) of the current MPI process.
+:type rank: int
+:param timelimit: Maximum allowed runtime in seconds. Must be non-negative.
+:type timelimit: float
+:param sendto: Rank of the process to which the best solution should be sent.
+:type sendto: int
+:param receivefrom: Rank of the process from which to receive the best solution.
+:type receivefrom: int
+:param verbose: If True, prints progress information. Defaults to True.
+:type verbose: bool, optional</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The best solution found by this process.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If <cite>timelimit</cite> is negative.</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>The method uses compressed and pickled data for MPI communication.</p></li>
+<li><p>Implements elitism and population reset if no improvement is observed for a threshold number of generations.</p></li>
+<li><p>The best solution is sent to the next process and received from the previous process in a ring topology.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">initialize_population</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA.initialize_population"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id10" title="Link to this definition"></a></dt>
+<dd><p>Initializes the population for the genetic algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A list of solutions generated by the problem’s generate_solution method,</dt><dd><p>with the number of solutions equal to the specified population size.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id11">
+<span class="sig-name descname"><span class="pre">reset_population</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">best</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">best_fit</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA.reset_population"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id11" title="Link to this definition"></a></dt>
+<dd><p>Resets the population for the genetic algorithm, preserving the best individual.
+:param best: The best individual from the previous generation.
+:type best: np.ndarray
+:param best_fit: The fitness value of the best individual.
+:type best_fit: float</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A tuple containing the new population array and the corresponding fitness values array,
+with the best individual and its fitness at the first position.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple[np.ndarray, np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id12">
+<span class="sig-name descname"><span class="pre">selection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">population</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fitnesess</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/ga.html#GA.selection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id12" title="Link to this definition"></a></dt>
+<dd><p>Selects a new population from the current population using tournament selection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>population</strong> (<em>np.ndarray</em>) – The current population of individuals, typically a 2D array where each row represents an individual.</p></li>
+<li><p><strong>fitnesess</strong> (<em>np.ndarray</em>) – Array of fitness values corresponding to each individual in the population.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The new population selected via tournament selection, with the same shape as the input population.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Tournament selection is performed by randomly selecting groups of individuals (of size <cite>self.tournament_size</cite>) and choosing the individual with the highest fitness from each group to form the new population.</p></li>
+<li><p>Assumes that <cite>self.tournament_size</cite> is defined and is an integer greater than 0.</p></li>
+</ul>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-TFG.algorithms.pso">
+<span id="tfg-algorithms-pso-module"></span><h2>TFG.algorithms.pso module<a class="headerlink" href="#module-TFG.algorithms.pso" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="TFG.algorithms.pso.PSO">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">TFG.algorithms.pso.</span></span><span class="sig-name descname"><span class="pre">PSO</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">problem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">swarm_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inertia_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cognitive_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">social_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">executer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'single'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/pso.html#PSO"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.pso.PSO" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#TFG.algorithms.algorithm.Algorithm" title="TFG.algorithms.algorithm.Algorithm"><code class="xref py py-class docutils literal notranslate"><span class="pre">Algorithm</span></code></a></p>
+<p>Particle Swarm Optimization (PSO) algorithm implementation.
+This class provides an implementation of the Particle Swarm Optimization (PSO) algorithm for solving optimization problems.
+PSO is a population-based stochastic optimization technique inspired by the social behavior of birds flocking or fish schooling.
+The algorithm maintains a swarm of particles, where each particle represents a candidate solution. Particles move through the
+solution space by updating their velocities and positions based on their own experience and the experience of their neighbors.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.pso.PSO.swarm_size">
+<span class="sig-name descname"><span class="pre">swarm_size</span></span><a class="headerlink" href="#TFG.algorithms.pso.PSO.swarm_size" title="Link to this definition"></a></dt>
+<dd><p>Number of particles in the swarm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.pso.PSO.inertia_weight">
+<span class="sig-name descname"><span class="pre">inertia_weight</span></span><a class="headerlink" href="#TFG.algorithms.pso.PSO.inertia_weight" title="Link to this definition"></a></dt>
+<dd><p>Inertia weight for velocity update.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.pso.PSO.cognitive_weight">
+<span class="sig-name descname"><span class="pre">cognitive_weight</span></span><a class="headerlink" href="#TFG.algorithms.pso.PSO.cognitive_weight" title="Link to this definition"></a></dt>
+<dd><p>Cognitive weight for velocity update.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.pso.PSO.social_weight">
+<span class="sig-name descname"><span class="pre">social_weight</span></span><a class="headerlink" href="#TFG.algorithms.pso.PSO.social_weight" title="Link to this definition"></a></dt>
+<dd><p>Social weight for velocity update.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.pso.PSO.seed">
+<span class="sig-name descname"><span class="pre">seed</span></span><a class="headerlink" href="#TFG.algorithms.pso.PSO.seed" title="Link to this definition"></a></dt>
+<dd><p>Random seed for reproducibility.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="TFG.algorithms.pso.PSO.reset_threshold">
+<span class="sig-name descname"><span class="pre">reset_threshold</span></span><a class="headerlink" href="#TFG.algorithms.pso.PSO.reset_threshold" title="Link to this definition"></a></dt>
+<dd><p>Number of iterations without improvement before resetting a particle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.pso.PSO.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">problem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">swarm_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inertia_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cognitive_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">social_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">executer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'single'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/pso.html#PSO.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.pso.PSO.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initializes the PSO algorithm with the specified parameters and validates their ranges.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.pso.PSO.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iterations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/pso.html#PSO.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.pso.PSO.fit" title="Link to this definition"></a></dt>
+<dd><p>Runs the PSO algorithm for a specified number of iterations or until a time limit is reached.
+Initializes the swarm, updates velocities and positions, evaluates fitness, and tracks the best solutions.
+Supports partial swarm reset if no improvement is observed for a specified threshold.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="TFG.algorithms.pso.PSO.fit_mpi">
+<span class="sig-name descname"><span class="pre">fit_mpi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sendto</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">receivefrom</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/pso.html#PSO.fit_mpi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.algorithms.pso.PSO.fit_mpi" title="Link to this definition"></a></dt>
+<dd><p>Executes the PSO algorithm in a distributed fashion using MPI for communication.
+Each MPI process maintains its own swarm and communicates the best found solutions with neighboring processes.
+Supports swarm reset and inter-process communication for best solution sharing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id13">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterations</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/pso.html#PSO.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id13" title="Link to this definition"></a></dt>
+<dd><p>Optimize the problem using Particle Swarm Optimization (PSO).
+This method runs the PSO algorithm for a specified number of iterations or until a time limit is reached.
+It initializes the swarm, updates velocities and positions, evaluates fitness, and tracks the best solutions.
+If no improvement is observed for a specified number of iterations, the swarm is partially reset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>iterations</strong> (<em>int</em>) – Maximum number of iterations to run the algorithm. Must be greater than 0.</p></li>
+<li><p><strong>timelimit</strong> (<em>float</em><em>, </em><em>optional</em>) – Maximum allowed runtime in seconds. If None, runs without a time limit.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, prints progress information during execution.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The best solution found by the swarm.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <cite>timelimit</cite> is negative or <cite>iterations</cite> is not greater than 0.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id14">
+<span class="sig-name descname"><span class="pre">fit_mpi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rank</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timelimit</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sendto</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">receivefrom</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/algorithms/pso.html#PSO.fit_mpi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id14" title="Link to this definition"></a></dt>
+<dd><p>Runs the Particle Swarm Optimization (PSO) algorithm in a distributed fashion using MPI for communication.
+This method executes the PSO algorithm, where each MPI process maintains its own swarm and communicates
+the best found solutions with neighboring processes. The algorithm continues until the specified time limit
+is reached or the maximum number of iterations is exceeded.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>comm</strong> – MPI communicator object used for inter-process communication.</p></li>
+<li><p><strong>rank</strong> (<em>int</em>) – The rank (ID) of the current MPI process.</p></li>
+<li><p><strong>timelimit</strong> (<em>float</em>) – Maximum allowed runtime in seconds. Must be non-negative.</p></li>
+<li><p><strong>sendto</strong> (<em>int</em>) – Rank of the process to which the best solution should be sent.</p></li>
+<li><p><strong>receivefrom</strong> (<em>int</em>) – Rank of the process from which to receive the best solution.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, prints progress information. Default is True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The best solution found by this process.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <cite>timelimit</cite> is negative.</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>The method assumes that the problem instance and executer are properly initialized.</p></li>
+<li><p>Communication between processes is performed using compressed and pickled data.</p></li>
+<li><p>The algorithm supports swarm reset if no improvement is observed for a specified threshold.</p></li>
+</ul>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-TFG.algorithms">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-TFG.algorithms" title="Link to this heading"></a></h2>
+<p>This package initializes and exposes the main algorithm classes and constants.</p>
+<dl class="simple">
+<dt>Exports:</dt><dd><p>Algorithm (class): Base class for all algorithms.
+MESSAGE_TAG (str): Tag used for message identification.
+FINISH_TAG (str): Tag used to indicate completion.
+ACO (class): Ant Colony Optimization algorithm implementation.
+PSO (class): Particle Swarm Optimization algorithm implementation.
+GA (class): Genetic Algorithm implementation.</p>
+</dd>
+</dl>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, IsaaHack.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

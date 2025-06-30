@@ -1,0 +1,217 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TFG.test.test_algorithms &mdash; TFG 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            TFG
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TFG</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">TFG.test.test_algorithms</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for TFG.test.test_algorithms</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.common</span> <span class="kn">import</span> <span class="n">generate_distance_matrix</span><span class="p">,</span> <span class="n">tsp_optimal_solution</span><span class="p">,</span> <span class="n">experiment_fitness</span><span class="p">,</span> <span class="n">get_digits_data</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">problems</span> <span class="kn">import</span> <span class="n">ClasProblem</span><span class="p">,</span> <span class="n">TSPProblem</span>
+<span class="kn">from</span> <span class="nn">algorithms</span> <span class="kn">import</span> <span class="n">GA</span><span class="p">,</span> <span class="n">ACO</span><span class="p">,</span> <span class="n">PSO</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="n">clas_iters</span> <span class="o">=</span> <span class="mi">300</span>
+<span class="n">tsp_iters</span> <span class="o">=</span> <span class="mi">100</span>
+
+<span class="n">ga_params_clas</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;population_size&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">ga_params_tsp</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;population_size&#39;</span><span class="p">:</span> <span class="mi">1024</span><span class="p">,</span>
+    <span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="s1">&#39;mutation_rate&#39;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+<span class="p">}</span>
+<span class="n">aco_params_clas</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;colony_size&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="s1">&#39;evaporation_rate&#39;</span><span class="p">:</span> <span class="mf">0.03</span><span class="p">,</span>
+    <span class="s1">&#39;alpha&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="s1">&#39;beta&#39;</span><span class="p">:</span> <span class="mf">1.5</span>
+<span class="p">}</span>
+<span class="n">aco_params_tsp</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;colony_size&#39;</span><span class="p">:</span> <span class="mi">1024</span><span class="p">,</span>
+    <span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="s1">&#39;alpha&#39;</span><span class="p">:</span> <span class="mf">1.7</span><span class="p">,</span>
+    <span class="s1">&#39;beta&#39;</span><span class="p">:</span> <span class="mf">1.2</span>
+<span class="p">}</span>
+<span class="n">pso_params_clas</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;swarm_size&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="s1">&#39;inertia_weight&#39;</span><span class="p">:</span> <span class="mf">0.9</span><span class="p">,</span>
+    <span class="s1">&#39;cognitive_weight&#39;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+    <span class="s1">&#39;social_weight&#39;</span><span class="p">:</span> <span class="mf">0.7</span>
+<span class="p">}</span>
+<span class="n">pso_params_tsp</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;swarm_size&#39;</span><span class="p">:</span> <span class="mi">1024</span><span class="p">,</span>
+    <span class="s1">&#39;seed&#39;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="s1">&#39;inertia_weight&#39;</span><span class="p">:</span> <span class="mf">0.9</span><span class="p">,</span>
+    <span class="s1">&#39;cognitive_weight&#39;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+    <span class="s1">&#39;social_weight&#39;</span><span class="p">:</span> <span class="mf">0.7</span>
+<span class="p">}</span>
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../TFG.test.html#TFG.test.test_algorithms.main">[docs]</a>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">algorithm_name</span><span class="o">=</span><span class="s1">&#39;ga&#39;</span><span class="p">,</span> <span class="n">executer_type</span><span class="o">=</span><span class="s1">&#39;gpu&#39;</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">n_cities</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Using seed:&quot;</span><span class="p">,</span> <span class="n">seed</span><span class="p">)</span>
+
+    <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span> <span class="o">=</span> <span class="n">get_digits_data</span><span class="p">(</span><span class="n">preprocess</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;X_train shape:&quot;</span><span class="p">,</span> <span class="n">X_train</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;y_train shape:&quot;</span><span class="p">,</span> <span class="n">y_train</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="n">dist_matrix</span> <span class="o">=</span> <span class="n">generate_distance_matrix</span><span class="p">(</span><span class="n">n_cities</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Number of cities:&quot;</span><span class="p">,</span> <span class="n">n_cities</span><span class="p">)</span>
+
+    <span class="c1"># Definimos pesos para cada una de las características</span>
+    <span class="n">problem</span> <span class="o">=</span> <span class="n">ClasProblem</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+    <span class="n">problem2</span> <span class="o">=</span> <span class="n">TSPProblem</span><span class="p">(</span><span class="n">dist_matrix</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">algorithm_name</span> <span class="o">==</span> <span class="s1">&#39;ga&#39;</span><span class="p">:</span>
+        <span class="n">algorithm</span> <span class="o">=</span> <span class="n">GA</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="o">**</span><span class="n">ga_params_clas</span><span class="p">,</span> <span class="n">executer</span><span class="o">=</span><span class="n">executer_type</span><span class="p">)</span>
+        <span class="n">algorithm2</span> <span class="o">=</span> <span class="n">GA</span><span class="p">(</span><span class="n">problem2</span><span class="p">,</span> <span class="o">**</span><span class="n">ga_params_tsp</span><span class="p">,</span> <span class="n">executer</span><span class="o">=</span><span class="n">executer_type</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">algorithm_name</span> <span class="o">==</span> <span class="s1">&#39;aco&#39;</span><span class="p">:</span>
+        <span class="n">algorithm</span> <span class="o">=</span> <span class="n">ACO</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="o">**</span><span class="n">aco_params_clas</span><span class="p">,</span> <span class="n">executer</span><span class="o">=</span><span class="n">executer_type</span><span class="p">)</span>
+        <span class="n">algorithm2</span> <span class="o">=</span> <span class="n">ACO</span><span class="p">(</span><span class="n">problem2</span><span class="p">,</span> <span class="o">**</span><span class="n">aco_params_tsp</span><span class="p">,</span> <span class="n">executer</span><span class="o">=</span><span class="n">executer_type</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">algorithm_name</span> <span class="o">==</span> <span class="s1">&#39;pso&#39;</span><span class="p">:</span>
+        <span class="n">algorithm</span> <span class="o">=</span> <span class="n">PSO</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="o">**</span><span class="n">pso_params_clas</span><span class="p">,</span> <span class="n">executer</span><span class="o">=</span><span class="n">executer_type</span><span class="p">)</span>
+        <span class="n">algorithm2</span> <span class="o">=</span> <span class="n">PSO</span><span class="p">(</span><span class="n">problem2</span><span class="p">,</span> <span class="o">**</span><span class="n">pso_params_tsp</span><span class="p">,</span> <span class="n">executer</span><span class="o">=</span><span class="n">executer_type</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown algorithm: </span><span class="si">{</span><span class="n">algorithm_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting </span><span class="si">{</span><span class="n">algorithm_name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> Clas...&quot;</span><span class="p">)</span>
+
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">algorithm</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">iterations</span><span class="o">=</span><span class="n">clas_iters</span><span class="p">)</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Time:&quot;</span><span class="p">,</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span>
+    <span class="n">fit</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">fitness</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+    <span class="n">class_rate</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">clas_rate</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+    <span class="n">red_rate</span> <span class="o">=</span> <span class="n">problem</span><span class="o">.</span><span class="n">red_rate</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Classification rate:&quot;</span><span class="p">,</span> <span class="n">class_rate</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Reduction rate:&quot;</span><span class="p">,</span> <span class="n">red_rate</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fitness from&quot;</span><span class="p">,</span> <span class="n">algorithm_name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="n">fit</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-----------------------------------------------------------&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting </span><span class="si">{</span><span class="n">algorithm_name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> TSP...&quot;</span><span class="p">)</span>
+
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">algorithm2</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">iterations</span><span class="o">=</span><span class="n">tsp_iters</span><span class="p">)</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Time:&quot;</span><span class="p">,</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span>
+    <span class="n">fit</span> <span class="o">=</span> <span class="n">problem2</span><span class="o">.</span><span class="n">fitness</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fitness from&quot;</span><span class="p">,</span> <span class="n">algorithm_name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="o">-</span><span class="n">fit</span><span class="p">)</span>
+
+    <span class="c1"># Verify path</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Verifying path...&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">path</span><span class="p">))</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_cities</span><span class="p">))):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Path is valid&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Path is invalid&quot;</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># Obtener el nombre del algoritmo desde la línea de comandos</span>
+    <span class="kn">import</span> <span class="nn">argparse</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s1">&#39;Run optimization algorithms.&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-a&#39;</span><span class="p">,</span> <span class="s1">&#39;--algorithm&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;ga&#39;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;ga&#39;</span><span class="p">,</span> <span class="s1">&#39;aco&#39;</span><span class="p">,</span> <span class="s1">&#39;pso&#39;</span><span class="p">],</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Algorithm to run: ga, aco, or pso&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-e&#39;</span><span class="p">,</span> <span class="s1">&#39;--executer_type&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;gpu&#39;</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;single&#39;</span><span class="p">,</span> <span class="s1">&#39;multi&#39;</span><span class="p">,</span> <span class="s1">&#39;gpu&#39;</span><span class="p">,</span> <span class="s1">&#39;hybrid&#39;</span><span class="p">],</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Execution type: single, multi, gpu, or hybrid&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-s&#39;</span><span class="p">,</span> <span class="s1">&#39;--seed&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Random seed for reproducibility&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-n&#39;</span><span class="p">,</span> <span class="s1">&#39;--n_cities&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Number of cities for TSP problem&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">main</span><span class="p">(</span><span class="n">algorithm_name</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">algorithm</span><span class="p">,</span> <span class="n">executer_type</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">executer_type</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">seed</span><span class="p">,</span> <span class="n">n_cities</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">n_cities</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, IsaaHack.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

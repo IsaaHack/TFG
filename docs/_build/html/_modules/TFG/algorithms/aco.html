@@ -1,0 +1,384 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TFG.algorithms.aco &mdash; TFG 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            TFG
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">TFG</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TFG</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">TFG.algorithms.aco</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for TFG.algorithms.aco</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">Algorithm</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">MESSAGE_TAG</span><span class="p">,</span> <span class="n">FINISH_TAG</span>
+<span class="kn">import</span> <span class="nn">pickle</span><span class="o">,</span> <span class="nn">zlib</span>
+
+<div class="viewcode-block" id="ACO">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.aco.ACO">[docs]</a>
+<span class="k">class</span> <span class="nc">ACO</span><span class="p">(</span><span class="n">Algorithm</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;Ant Colony Optimization (ACO) metaheuristic algorithm.</span>
+<span class="sd">    This class implements the Ant Colony Optimization (ACO) algorithm for solving combinatorial optimization problems.</span>
+<span class="sd">    ACO is inspired by the foraging behavior of ants and uses a colony of artificial ants to construct solutions and</span>
+<span class="sd">    update pheromone trails to guide the search for optimal solutions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    problem : object</span>
+<span class="sd">        An object representing the optimization problem. Must implement the required methods:</span>
+<span class="sd">    colony_size : int, optional</span>
+<span class="sd">        Number of ants in the colony. Must be greater than 0. Default is 50.</span>
+<span class="sd">    evaporation_rate : float, optional</span>
+<span class="sd">        Rate at which pheromones evaporate. Must be between 0 and 1 (exclusive). Default is 0.1.</span>
+<span class="sd">    alpha : float, optional</span>
+<span class="sd">        Relative importance of pheromone. Must be greater than 0. Default is 1.0.</span>
+<span class="sd">    beta : float, optional</span>
+<span class="sd">        Relative importance of heuristic information. Must be greater than 0. Default is 2.0.</span>
+<span class="sd">    seed : int or None, optional</span>
+<span class="sd">        Random seed for reproducibility. Default is None.</span>
+<span class="sd">    reset_threshold : int, optional</span>
+<span class="sd">        Number of iterations without improvement before pheromone reset. Must be greater than 0. Default is 100.</span>
+<span class="sd">    executer : str, optional</span>
+<span class="sd">        Execution mode, e.g., &#39;single&#39; or other supported modes. Default is &#39;single&#39;.</span>
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If any parameter is outside its valid range.</span>
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    fit(iterations, timelimit=None, verbose=True)</span>
+<span class="sd">        Runs the ACO algorithm for a specified number of iterations or until a time limit is reached.</span>
+<span class="sd">        Returns the best solution found.</span>
+<span class="sd">    fit_mpi(comm, rank, timelimit, sendto, receivefrom, verbose=True)</span>
+<span class="sd">        Executes the ACO algorithm in a distributed manner using MPI for parallel processing.</span>
+<span class="sd">        Returns the best solution found by this process.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">colony_size</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">evaporation_rate</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reset_threshold</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">executer</span><span class="o">=</span><span class="s1">&#39;single&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the Ant Colony Optimization (ACO) algorithm with the specified parameters.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            problem: An object representing the optimization problem. Must implement the required methods: </span>
+<span class="sd">                &#39;fitness&#39;, &#39;initialize_pheromones&#39;, &#39;construct_solutions&#39;, &#39;update_pheromones&#39;, &#39;reset_pheromones&#39;.</span>
+<span class="sd">            colony_size (int, optional): Number of ants in the colony. Must be greater than 0. Default is 50.</span>
+<span class="sd">            evaporation_rate (float, optional): Rate at which pheromones evaporate. Must be between 0 and 1 (exclusive). Default is 0.1.</span>
+<span class="sd">            alpha (float, optional): Relative importance of pheromone. Must be greater than 0. Default is 1.0.</span>
+<span class="sd">            beta (float, optional): Relative importance of heuristic information. Must be greater than 0. Default is 2.0.</span>
+<span class="sd">            seed (int or None, optional): Random seed for reproducibility. Default is None.</span>
+<span class="sd">            reset_threshold (int, optional): Number of iterations without improvement before pheromone reset. Must be greater than 0. Default is 100.</span>
+<span class="sd">            executer (str, optional): Execution mode, e.g., &#39;single&#39; or other supported modes. Default is &#39;single&#39;.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If any parameter is outside its valid range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Se definen los métodos requeridos que el problema debe implementar.</span>
+        <span class="n">required_methods</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;fitness&#39;</span><span class="p">,</span> <span class="s1">&#39;initialize_pheromones&#39;</span><span class="p">,</span> <span class="s1">&#39;construct_solutions&#39;</span><span class="p">,</span> <span class="s1">&#39;update_pheromones&#39;</span><span class="p">,</span> <span class="s1">&#39;reset_pheromones&#39;</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="n">required_methods</span><span class="p">,</span> <span class="n">executer</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">colony_size</span> <span class="o">=</span> <span class="n">colony_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">evaporation_rate</span> <span class="o">=</span> <span class="n">evaporation_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beta</span> <span class="o">=</span> <span class="n">beta</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset_threshold</span> <span class="o">=</span> <span class="n">reset_threshold</span>
+
+        <span class="k">if</span> <span class="n">colony_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Colony size must be greater than 0.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">evaporation_rate</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">evaporation_rate</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Evaporation rate must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">alpha</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Alpha must be greater than 0.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">beta</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Beta must be greater than 0.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">reset_threshold</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Reset threshold must be greater than 0.&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ACO.fit">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.aco.ACO.fit">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">timelimit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fits the Ant Colony Optimization (ACO) algorithm to the given problem instance.</span>
+<span class="sd">        This method runs the ACO metaheuristic for a specified number of iterations or until a time limit is reached.</span>
+<span class="sd">        It manages the pheromone initialization and update, solution construction, evaluation, and tracks the best solution found.</span>
+<span class="sd">        If no improvement is observed for a number of iterations defined by `self.reset_threshold`, the pheromones are reset.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            iterations (int): The maximum number of iterations to run the algorithm. Must be greater than 0.</span>
+<span class="sd">            timelimit (float, optional): The maximum time (in seconds) to run the algorithm. If None, runs without a time limit.</span>
+<span class="sd">            verbose (bool, optional): If True, prints progress information during execution.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: The best solution found during the optimization process.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If `timelimit` is negative or if `iterations` is not greater than 0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">timelimit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">timelimit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">if</span> <span class="n">timelimit</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Timelimit must be a non-negative value.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">iterations</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Iterations must be greater than 0.&quot;</span><span class="p">)</span>
+        
+        <span class="n">time_start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_init</span><span class="p">(</span><span class="n">time_start</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">)</span>
+
+        <span class="c1"># Inicializa las feromonas del problema.</span>
+        <span class="n">pheromones</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">initialize_pheromones</span><span class="p">()</span>
+        <span class="n">best</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">best_fit</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+        <span class="n">iteration</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">fitness_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colony_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">colony</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_solution</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colony_size</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="n">iteration</span> <span class="o">&lt;</span> <span class="n">iterations</span> <span class="ow">and</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_start</span> <span class="o">&lt;</span> <span class="n">timelimit</span><span class="p">:</span>
+            <span class="c1"># Se generan soluciones a partir de las feromonas.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">construct_solutions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colony_size</span><span class="p">,</span> <span class="n">pheromones</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">beta</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">colony</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Se reinicializan las soluciones de la colonia con la mejor solución encontrada.</span>
+                <span class="n">colony</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">best</span>
+                <span class="n">fitness_values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">best_fit</span>
+                <span class="c1"># Se evalúan las soluciones generadas.</span>
+                <span class="n">fitness_values</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">colony</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Se evalúan las soluciones generadas.</span>
+                <span class="n">fitness_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">colony</span><span class="p">)</span>
+            
+            <span class="c1"># Se selecciona la mejor solución de la colonia.</span>
+            <span class="n">best_iteration_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)</span>
+            <span class="n">best_iteration_fit</span> <span class="o">=</span> <span class="n">fitness_values</span><span class="p">[</span><span class="n">best_iteration_idx</span><span class="p">]</span>
+
+            <span class="c1"># Se actualiza la mejor solución global si es necesario.</span>
+            <span class="k">if</span> <span class="n">best_iteration_fit</span> <span class="o">&gt;</span> <span class="n">best_fit</span><span class="p">:</span>
+                <span class="n">best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">colony</span><span class="p">[</span><span class="n">best_iteration_idx</span><span class="p">])</span>
+                <span class="n">best_fit</span> <span class="o">=</span> <span class="n">best_iteration_fit</span>
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">no_improvement</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Actualización de feromonas a partir de las soluciones actuales.</span>
+            <span class="c1"># Se delega la actualización en el problema.</span>
+            <span class="n">pheromones</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">update_pheromones</span><span class="p">(</span><span class="n">pheromones</span><span class="p">,</span> <span class="n">colony</span><span class="p">,</span> <span class="n">fitness_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaporation_rate</span><span class="p">)</span>
+
+            <span class="c1"># Si no hay mejora en varias iteraciones se reinicia la colonia.</span>
+            <span class="k">if</span> <span class="n">no_improvement</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset_threshold</span><span class="p">:</span>
+                <span class="c1"># Se reinicializa las feromonas</span>
+                <span class="n">pheromones</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">reset_pheromones</span><span class="p">(</span><span class="n">pheromones</span><span class="p">)</span>
+                <span class="c1"># Se reinicializa el contador de no mejora</span>
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="n">iteration</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_update</span><span class="p">(</span><span class="n">best_fit</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_end</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">best</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="ACO.fit_mpi">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.aco.ACO.fit_mpi">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit_mpi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">,</span> <span class="n">sendto</span><span class="p">,</span> <span class="n">receivefrom</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes the Ant Colony Optimization (ACO) algorithm in a distributed manner using MPI for parallel processing.</span>
+<span class="sd">        This method coordinates multiple processes to collaboratively solve an optimization problem by sharing the best solutions found among them. Each process constructs solutions, evaluates them, updates pheromones, and communicates the best solutions with neighboring processes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            comm: MPI communicator object used for inter-process communication.</span>
+<span class="sd">            rank (int): The rank (ID) of the current process.</span>
+<span class="sd">            timelimit (float): Maximum allowed time (in seconds) for the algorithm to run. Must be non-negative.</span>
+<span class="sd">            sendto (int): Rank of the process to which the best solution should be sent.</span>
+<span class="sd">            receivefrom (int): Rank of the process from which to receive the best solution.</span>
+<span class="sd">            verbose (bool, optional): If True, prints progress information. Defaults to True.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If `timelimit` is negative.</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: The best solution found by this process during execution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">timelimit</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Timelimit must be a non-negative value.&quot;</span><span class="p">)</span>
+
+        <span class="n">iterations</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+        <span class="n">time_start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+
+        <span class="c1"># Inicializa las feromonas del problema.</span>
+        <span class="n">pheromones</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">initialize_pheromones</span><span class="p">()</span>
+        <span class="n">best</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">best_fit</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+        <span class="n">iteration</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+        
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_init</span><span class="p">(</span><span class="n">time_start</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">)</span>
+
+        <span class="n">fitness_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colony_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">colony</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_solution</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colony_size</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="n">iteration</span> <span class="o">&lt;</span> <span class="n">iterations</span> <span class="ow">and</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_start</span> <span class="o">&lt;</span> <span class="n">timelimit</span><span class="p">:</span>
+            <span class="c1"># Se generan soluciones a partir de las feromonas.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">construct_solutions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">colony_size</span><span class="p">,</span> <span class="n">pheromones</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">beta</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">colony</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Se reinicializan las soluciones de la colonia con la mejor solución encontrada.</span>
+                <span class="n">colony</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">best</span>
+                <span class="n">fitness_values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">best_fit</span>
+                <span class="c1"># Se evalúan las soluciones generadas.</span>
+                <span class="n">fitness_values</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">colony</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Se evalúan las soluciones generadas.</span>
+                <span class="n">fitness_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">colony</span><span class="p">)</span>
+            
+            <span class="c1"># Se selecciona la mejor solución de la colonia.</span>
+            <span class="n">best_iteration_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)</span>
+            <span class="n">best_iteration_fit</span> <span class="o">=</span> <span class="n">fitness_values</span><span class="p">[</span><span class="n">best_iteration_idx</span><span class="p">]</span>
+
+            <span class="c1"># Se actualiza la mejor solución global si es necesario.</span>
+            <span class="k">if</span> <span class="n">best_iteration_fit</span> <span class="o">&gt;</span> <span class="n">best_fit</span><span class="p">:</span>
+                <span class="n">best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">colony</span><span class="p">[</span><span class="n">best_iteration_idx</span><span class="p">])</span>
+                <span class="n">best_fit</span> <span class="o">=</span> <span class="n">best_iteration_fit</span>
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="c1"># Enviar el mejor resultado al siguiente proceso</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">best</span><span class="p">,</span> <span class="n">best_fit</span><span class="p">)</span>
+                <span class="n">data_serialized</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+                <span class="n">comm</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data_serialized</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">sendto</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">no_improvement</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># Actualización de feromonas a partir de las soluciones actuales.</span>
+            <span class="c1"># Se delega la actualización en el problema.</span>
+            <span class="n">pheromones</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">update_pheromones</span><span class="p">(</span><span class="n">pheromones</span><span class="p">,</span> <span class="n">colony</span><span class="p">,</span> <span class="n">fitness_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaporation_rate</span><span class="p">)</span>
+
+            <span class="c1"># Si no hay mejora en varias iteraciones se reinicia la colonia.</span>
+            <span class="k">if</span> <span class="n">no_improvement</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset_threshold</span><span class="p">:</span>
+                <span class="c1"># Se reinicializa las feromonas</span>
+                <span class="n">pheromones</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">reset_pheromones</span><span class="p">(</span><span class="n">pheromones</span><span class="p">)</span>
+                <span class="c1"># Se reinicializa el contador de no mejora</span>
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="c1"># Recibir el mejor resultado del proceso receivefrom</span>
+            <span class="n">hay_mensaje</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Iprobe</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">receivefrom</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+            <span class="k">while</span> <span class="n">hay_mensaje</span><span class="p">:</span>
+                <span class="n">rank_received</span><span class="p">,</span> <span class="n">best_received</span><span class="p">,</span> <span class="n">best_fit_received</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">receivefrom</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)))</span>
+                <span class="k">if</span> <span class="n">best_fit_received</span> <span class="o">&gt;</span> <span class="n">best_fit</span><span class="p">:</span>
+                    <span class="n">best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">best_received</span><span class="p">)</span>
+                    <span class="n">best_fit</span> <span class="o">=</span> <span class="n">best_fit_received</span>
+                <span class="k">if</span> <span class="n">rank_received</span> <span class="o">!=</span> <span class="n">rank</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">best</span><span class="p">,</span> <span class="n">best_fit</span><span class="p">)</span>
+                    <span class="n">data_serialized</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+                    <span class="n">comm</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data_serialized</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">sendto</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+                <span class="n">hay_mensaje</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Iprobe</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">receivefrom</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+
+            <span class="n">iteration</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_update</span><span class="p">(</span><span class="n">best_fit</span><span class="p">,</span> <span class="n">iteration</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_end</span><span class="p">()</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">best</span><span class="p">,</span> <span class="n">best_fit</span><span class="p">)</span>
+        <span class="n">data_serialized</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+        <span class="n">comm</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data_serialized</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">sendto</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">FINISH_TAG</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">best</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, IsaaHack.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

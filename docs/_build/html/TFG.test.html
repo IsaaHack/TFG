@@ -1,0 +1,168 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TFG.test package &mdash; TFG 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            TFG
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">TFG.test package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-TFG.test.common">TFG.test.common module</a><ul>
+<li><a class="reference internal" href="#TFG.test.common.experiment_fitness"><code class="docutils literal notranslate"><span class="pre">experiment_fitness()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.test.common.generate_distance_matrix"><code class="docutils literal notranslate"><span class="pre">generate_distance_matrix()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.test.common.get_digits_data"><code class="docutils literal notranslate"><span class="pre">get_digits_data()</span></code></a></li>
+<li><a class="reference internal" href="#TFG.test.common.tsp_optimal_solution"><code class="docutils literal notranslate"><span class="pre">tsp_optimal_solution()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-TFG.test.test_algorithms">TFG.test.test_algorithms module</a><ul>
+<li><a class="reference internal" href="#TFG.test.test_algorithms.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-TFG.test.test_fitness">TFG.test.test_fitness module</a><ul>
+<li><a class="reference internal" href="#TFG.test.test_fitness.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-TFG.test">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">TFG</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">TFG.test package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/TFG.test.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="tfg-test-package">
+<h1>TFG.test package<a class="headerlink" href="#tfg-test-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-TFG.test.common">
+<span id="tfg-test-common-module"></span><h2>TFG.test.common module<a class="headerlink" href="#module-TFG.test.common" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="TFG.test.common.experiment_fitness">
+<span class="sig-prename descclassname"><span class="pre">TFG.test.common.</span></span><span class="sig-name descname"><span class="pre">experiment_fitness</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">problem</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/test/common.html#experiment_fitness"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.test.common.experiment_fitness" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="TFG.test.common.generate_distance_matrix">
+<span class="sig-prename descclassname"><span class="pre">TFG.test.common.</span></span><span class="sig-name descname"><span class="pre">generate_distance_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_cities</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/test/common.html#generate_distance_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.test.common.generate_distance_matrix" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="TFG.test.common.get_digits_data">
+<span class="sig-prename descclassname"><span class="pre">TFG.test.common.</span></span><span class="sig-name descname"><span class="pre">get_digits_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">preprocess</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/test/common.html#get_digits_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.test.common.get_digits_data" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="TFG.test.common.tsp_optimal_solution">
+<span class="sig-prename descclassname"><span class="pre">TFG.test.common.</span></span><span class="sig-name descname"><span class="pre">tsp_optimal_solution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_matrix</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/test/common.html#tsp_optimal_solution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.test.common.tsp_optimal_solution" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-TFG.test.test_algorithms">
+<span id="tfg-test-test-algorithms-module"></span><h2>TFG.test.test_algorithms module<a class="headerlink" href="#module-TFG.test.test_algorithms" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="TFG.test.test_algorithms.main">
+<span class="sig-prename descclassname"><span class="pre">TFG.test.test_algorithms.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">algorithm_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ga'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">executer_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cities</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/test/test_algorithms.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.test.test_algorithms.main" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-TFG.test.test_fitness">
+<span id="tfg-test-test-fitness-module"></span><h2>TFG.test.test_fitness module<a class="headerlink" href="#module-TFG.test.test_fitness" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="TFG.test.test_fitness.main">
+<span class="sig-prename descclassname"><span class="pre">TFG.test.test_fitness.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/TFG/test/test_fitness.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#TFG.test.test_fitness.main" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-TFG.test">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-TFG.test" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, IsaaHack.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,430 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TFG.executers.cluster_executer &mdash; TFG 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            TFG
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TFG</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">TFG.executers.cluster_executer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for TFG.executers.cluster_executer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">cluster_executer.py</span>
+<span class="sd">This module provides the ClusterExecuter class and utility functions for executing algorithms in parallel or distributed computing environments using MPI (Message Passing Interface). It supports both master-slave and distributed execution modes, allowing for flexible parallelization strategies across multiple nodes or processes.</span>
+
+<span class="sd">Classes</span>
+<span class="sd">-------</span>
+<span class="sd">ClusterExecuter</span>
+<span class="sd">    A class for managing and executing one or more algorithms in a cluster environment using MPI. Supports both &#39;master-slave&#39; and &#39;distributed&#39; execution types.</span>
+
+<span class="sd">Functions</span>
+<span class="sd">---------</span>
+<span class="sd">    Creates a &#39;hosts.txt&#39; file listing the provided nodes, to be used as a hostfile for MPI execution.</span>
+<span class="sd">    Deletes the &#39;hosts.txt&#39; file from the current directory, handling errors if the file does not exist.</span>
+<span class="sd">cluster_execute_run(filename, nodes, program_args=None)</span>
+<span class="sd">    Executes a Python script across a cluster of nodes using MPI (mpirun), streaming output in real time and cleaning up the hostfile after execution.</span>
+
+<span class="sd">Constants</span>
+<span class="sd">---------</span>
+<span class="sd">MESSAGE_TAG : int</span>
+<span class="sd">    Tag used for standard MPI messages.</span>
+<span class="sd">FINISH_TAG : int</span>
+<span class="sd">    Tag used to indicate process completion in MPI communication.</span>
+
+<span class="sd">Dependencies</span>
+<span class="sd">------------</span>
+<span class="sd">- mpi4py</span>
+<span class="sd">- numpy</span>
+<span class="sd">- pickle</span>
+<span class="sd">- zlib</span>
+<span class="sd">- subprocess</span>
+<span class="sd">- os</span>
+<span class="sd">- time</span>
+
+<span class="sd">Usage</span>
+<span class="sd">-----</span>
+<span class="sd">This module is intended to be used as part of a distributed or parallel computing workflow, where algorithms need to be executed across multiple processes or nodes using MPI.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">Executer</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pickle</span><span class="o">,</span> <span class="nn">zlib</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">sleep</span>
+
+<span class="n">MESSAGE_TAG</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">FINISH_TAG</span> <span class="o">=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="ClusterExecuter">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.cluster_executer.ClusterExecuter">[docs]</a>
+<span class="k">class</span> <span class="nc">ClusterExecuter</span><span class="p">(</span><span class="n">Executer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ClusterExecuter is a class for executing algorithms in a parallel or distributed computing environment using MPI.</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    algorithms : object or list of objects</span>
+<span class="sd">        A single algorithm instance or a list of algorithm instances to be executed in parallel.</span>
+<span class="sd">    type : str, optional (default=&#39;master-slave&#39;)</span>
+<span class="sd">        The execution mode. Must be either &#39;master-slave&#39; or &#39;distributed&#39;.</span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    algorithms : object or list of objects</span>
+<span class="sd">        The algorithm(s) to be executed.</span>
+<span class="sd">    n_algorithms : int</span>
+<span class="sd">        The number of algorithms to be executed.</span>
+<span class="sd">    type : str</span>
+<span class="sd">        The execution mode.</span>
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    execute(comm, rank, size, timelimit=None, verbose=False)</span>
+<span class="sd">        Executes the algorithms according to the specified execution type (&#39;master-slave&#39; or &#39;distributed&#39;).</span>
+<span class="sd">    execute_master_slave(comm, rank, size, timelimit=None, verbose=False)</span>
+<span class="sd">        Executes the algorithms in a master-slave parallelization scheme.</span>
+<span class="sd">    execute_distributed(comm, rank, size, timelimit=None, verbose=False)</span>
+<span class="sd">        Executes the algorithms in a distributed parallelization scheme.</span>
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the number of algorithms is less than or equal to zero.</span>
+<span class="sd">        If the execution type is not &#39;master-slave&#39; or &#39;distributed&#39;.</span>
+<span class="sd">        If the number of algorithms does not match the number of processes (when required).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">algorithms</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;master-slave&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the cluster executor with the specified algorithms and execution type.</span>
+<span class="sd">        Args:</span>
+<span class="sd">            algorithms (list or object): A list of algorithm instances or a single algorithm instance to be managed by the executor.</span>
+<span class="sd">            type (str, optional): The execution type, either &#39;master-slave&#39; or &#39;distributed&#39;. Defaults to &#39;master-slave&#39;.</span>
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the number of algorithms is less than or equal to 0.</span>
+<span class="sd">            ValueError: If the provided type is not &#39;master-slave&#39; or &#39;distributed&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">algorithms</span> <span class="o">=</span> <span class="n">algorithms</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">algorithms</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_algorithms</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">algorithms</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_algorithms</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_algorithms</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Number of algorithms must be greater than 0.&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="nb">type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;master-slave&#39;</span><span class="p">,</span> <span class="s1">&#39;distributed&#39;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Type must be either &#39;master-slave&#39; or &#39;distributed&#39;.&quot;</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="nb">type</span>
+
+<div class="viewcode-block" id="ClusterExecuter.execute">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.cluster_executer.ClusterExecuter.execute">[docs]</a>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">timelimit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes the cluster task based on the specified execution type.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            comm: The MPI communicator object used for inter-process communication.</span>
+<span class="sd">            rank (int): The rank of the current process within the communicator.</span>
+<span class="sd">            size (int): The total number of processes in the communicator.</span>
+<span class="sd">            timelimit (Optional[float]): Optional time limit for the execution (in seconds). Defaults to None.</span>
+<span class="sd">            verbose (bool): If True, enables verbose output. Defaults to False.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The result of the execution method corresponding to the selected type.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the execution type is unknown. Supported types are &#39;master-slave&#39; and &#39;distributed&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;master-slave&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_master_slave</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;distributed&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_distributed</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown execution type: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2">. Available types: &#39;master-slave&#39;, &#39;distributed&#39;.&quot;</span><span class="p">)</span></div>
+
+            
+        
+<div class="viewcode-block" id="ClusterExecuter.execute_master_slave">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.cluster_executer.ClusterExecuter.execute_master_slave">[docs]</a>
+    <span class="k">def</span> <span class="nf">execute_master_slave</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">timelimit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes a master-slave parallel optimization using MPI.</span>
+
+<span class="sd">        This method coordinates the execution of one or multiple algorithms across multiple MPI processes.</span>
+<span class="sd">        The master process (rank 0) collects results from worker processes, tracks the best solution found,</span>
+<span class="sd">        and broadcasts improvements to all workers. Worker processes execute their assigned algorithm(s)</span>
+<span class="sd">        and communicate results to the master.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            comm (mpi4py.MPI.Comm): The MPI communicator.</span>
+<span class="sd">            rank (int): The rank of the current MPI process.</span>
+<span class="sd">            size (int): The total number of MPI processes.</span>
+<span class="sd">            timelimit (float, optional): Time limit for the optimization (per process). Default is None.</span>
+<span class="sd">            verbose (bool, optional): If True, prints progress and debug information. Default is False.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: The best solution found (on the master process).</span>
+<span class="sd">        </span>
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the number of algorithms does not match the number of worker processes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sendto</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">receivefrom</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">rank</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_algorithms</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># Ejecutar un único problema con un único algoritmo</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">fit_mpi</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">,</span> <span class="n">sendto</span><span class="p">,</span> <span class="n">receivefrom</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">size</span><span class="o">-</span><span class="mi">1</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_algorithms</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Number of algorithms must match the number of processes.&quot;</span><span class="p">)</span>
+                <span class="c1"># Ejecutar un único problema con múltiples algoritmos</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithms</span><span class="p">[</span><span class="n">rank</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">fit_mpi</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">,</span> <span class="n">sendto</span><span class="p">,</span> <span class="n">receivefrom</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+            <span class="n">best</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">best_fit</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+            <span class="n">n_improvements_rank</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">size</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+
+            <span class="n">end</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">end_number</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">while</span> <span class="ow">not</span> <span class="n">end</span><span class="p">:</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">Status</span><span class="p">()</span>
+                <span class="n">comm</span><span class="o">.</span><span class="n">probe</span><span class="p">(</span><span class="n">MPI</span><span class="o">.</span><span class="n">ANY_SOURCE</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MPI</span><span class="o">.</span><span class="n">ANY_TAG</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">)</span>
+
+                <span class="n">source</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">source</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MPI</span><span class="o">.</span><span class="n">ANY_TAG</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">)</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">best_recieved</span><span class="p">,</span> <span class="n">best_fit_recieved</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
+
+                <span class="k">if</span> <span class="n">best_fit_recieved</span> <span class="o">&gt;</span> <span class="n">best_fit</span><span class="p">:</span>
+                    <span class="n">best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">best_recieved</span><span class="p">)</span>
+                    <span class="n">best_fit</span> <span class="o">=</span> <span class="n">best_fit_recieved</span>
+                    <span class="n">n_improvements_rank</span><span class="p">[</span><span class="n">source</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;New best from </span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2">: fitness = </span><span class="si">{</span><span class="n">best_fit</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="c1"># Enviar el mejor resultado a todos los procesos</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">best</span><span class="p">,</span> <span class="n">best_fit</span><span class="p">)</span>
+                    <span class="n">data_serialized</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+                        <span class="c1"># Serializar el mensaje para evitar problemas con tipos de datos complejos</span>
+                        <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">source</span><span class="p">:</span>
+                            <span class="n">comm</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data_serialized</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">i</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">status</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="n">FINISH_TAG</span><span class="p">:</span>
+                    <span class="n">end_number</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="n">source</span><span class="si">}</span><span class="s2"> finished. Total finished: </span><span class="si">{</span><span class="n">end_number</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">size</span><span class="o">-</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">end_number</span> <span class="o">==</span> <span class="n">size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">end</span> <span class="o">=</span> <span class="kc">True</span>
+                        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;All processes finished.&quot;</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">best</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ClusterExecuter.execute_distributed">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.cluster_executer.ClusterExecuter.execute_distributed">[docs]</a>
+    <span class="k">def</span> <span class="nf">execute_distributed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">timelimit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes distributed training or evaluation of algorithms using MPI communication.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            comm: MPI communicator object used for inter-process communication.</span>
+<span class="sd">            rank (int): The rank (ID) of the current process.</span>
+<span class="sd">            size (int): Total number of processes participating in the computation.</span>
+<span class="sd">            timelimit (float, optional): Maximum allowed time for execution (in seconds). Defaults to None.</span>
+<span class="sd">            verbose (bool, optional): If True, enables verbose output. Defaults to False.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The result of the fit_mpi method from the algorithm(s), which may vary depending on implementation.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the number of algorithms does not match the number of processes when multiple algorithms are used.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - If only one algorithm is present, it is executed across all processes.</span>
+<span class="sd">            - If multiple algorithms are present, each process executes a different algorithm.</span>
+<span class="sd">            - The sendto and receivefrom variables determine the neighboring processes for communication in a ring topology.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sendto</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">size</span>
+        <span class="n">receivefrom</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">size</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_algorithms</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># Ejecutar un único problema con un único algoritmo</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">fit_mpi</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">,</span> <span class="n">sendto</span><span class="p">,</span> <span class="n">receivefrom</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">size</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_algorithms</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Number of algorithms must match the number of processes.&quot;</span><span class="p">)</span>
+            <span class="c1"># Ejecutar un único problema con múltiples algoritmos</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithms</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span><span class="o">.</span><span class="n">fit_mpi</span><span class="p">(</span><span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">,</span> <span class="n">sendto</span><span class="p">,</span> <span class="n">receivefrom</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span></div>
+</div>
+
+        
+
+<div class="viewcode-block" id="create_hosts">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.cluster_executer.create_hosts">[docs]</a>
+<span class="k">def</span> <span class="nf">create_hosts</span><span class="p">(</span><span class="n">nodes</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a file named &#39;hosts.txt&#39; and writes each node from the given list to a new line in the file.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        nodes (list): A list of node addresses or hostnames to be written to the file.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Crear el archivo hosts.txt</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;hosts.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">node</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="delete_hosts">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.cluster_executer.delete_hosts">[docs]</a>
+<span class="k">def</span> <span class="nf">delete_hosts</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Deletes the &#39;hosts.txt&#39; file from the current directory.</span>
+
+<span class="sd">    Attempts to remove the &#39;hosts.txt&#39; file. If the file does not exist,</span>
+<span class="sd">    an error message is printed to inform the user.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        OSError: If an error occurs other than the file not being found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Borrar el archivo hosts.txt</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s2">&quot;hosts.txt&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Error: hosts.txt file not found.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="cluster_execute_run">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.cluster_executer.cluster_execute_run">[docs]</a>
+<span class="k">def</span> <span class="nf">cluster_execute_run</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">program_args</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Executes a Python script across a cluster of nodes using MPI (mpirun), streaming output in real time.</span>
+<span class="sd">    Args:</span>
+<span class="sd">        filename (str): The path to the Python script to execute.</span>
+<span class="sd">        nodes (list): A list of node addresses or hostnames to include in the cluster.</span>
+<span class="sd">        program_args (list, optional): Additional command-line arguments to pass to the Python script. Defaults to None.</span>
+<span class="sd">    Behavior:</span>
+<span class="sd">        - Creates a hostfile from the provided nodes.</span>
+<span class="sd">        - Runs the script using mpirun with the specified nodes and arguments.</span>
+<span class="sd">        - Streams the combined stdout and stderr output in real time to the console.</span>
+<span class="sd">        - Cleans up the hostfile after execution.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        Any exceptions raised by subprocess.Popen or related I/O operations will propagate.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">create_hosts</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span>
+
+
+    <span class="k">if</span> <span class="n">program_args</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">program_args</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Ejecutar el comando en tiempo real</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mpirun&quot;</span><span class="p">,</span> <span class="s2">&quot;-n&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)),</span> <span class="s2">&quot;--hostfile&quot;</span><span class="p">,</span> <span class="s2">&quot;hosts.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;python3&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">]</span> <span class="o">+</span> <span class="n">program_args</span>
+    
+    <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    
+    <span class="c1"># Leer y mostrar la salida en tiempo real</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">line</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span> <span class="ow">and</span> <span class="n">process</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="k">if</span> <span class="n">line</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>  <span class="c1"># end=&#39;&#39; para no agregar doble salto de línea</span>
+
+    <span class="n">process</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>  <span class="c1"># Esperar a que termine el proceso</span>
+
+    <span class="n">delete_hosts</span><span class="p">()</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, IsaaHack.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

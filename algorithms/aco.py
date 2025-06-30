@@ -5,7 +5,60 @@ from . import MESSAGE_TAG, FINISH_TAG
 import pickle, zlib
 
 class ACO(Algorithm):
+    '''Ant Colony Optimization (ACO) metaheuristic algorithm.
+    This class implements the Ant Colony Optimization (ACO) algorithm for solving combinatorial optimization problems.
+    ACO is inspired by the foraging behavior of ants and uses a colony of artificial ants to construct solutions and
+    update pheromone trails to guide the search for optimal solutions.
+
+    Parameters
+    ----------
+    problem : object
+        An object representing the optimization problem. Must implement the required methods:
+    colony_size : int, optional
+        Number of ants in the colony. Must be greater than 0. Default is 50.
+    evaporation_rate : float, optional
+        Rate at which pheromones evaporate. Must be between 0 and 1 (exclusive). Default is 0.1.
+    alpha : float, optional
+        Relative importance of pheromone. Must be greater than 0. Default is 1.0.
+    beta : float, optional
+        Relative importance of heuristic information. Must be greater than 0. Default is 2.0.
+    seed : int or None, optional
+        Random seed for reproducibility. Default is None.
+    reset_threshold : int, optional
+        Number of iterations without improvement before pheromone reset. Must be greater than 0. Default is 100.
+    executer : str, optional
+        Execution mode, e.g., 'single' or other supported modes. Default is 'single'.
+    Raises
+    ------
+    ValueError
+        If any parameter is outside its valid range.
+    Methods
+    -------
+    fit(iterations, timelimit=None, verbose=True)
+        Runs the ACO algorithm for a specified number of iterations or until a time limit is reached.
+        Returns the best solution found.
+    fit_mpi(comm, rank, timelimit, sendto, receivefrom, verbose=True)
+        Executes the ACO algorithm in a distributed manner using MPI for parallel processing.
+        Returns the best solution found by this process.
+    '''
     def __init__(self, problem, colony_size=50, evaporation_rate=0.1, alpha=1.0, beta=2.0, seed=None, reset_threshold=100, executer='single'):
+        """
+        Initializes the Ant Colony Optimization (ACO) algorithm with the specified parameters.
+
+        Parameters:
+            problem: An object representing the optimization problem. Must implement the required methods: 
+                'fitness', 'initialize_pheromones', 'construct_solutions', 'update_pheromones', 'reset_pheromones'.
+            colony_size (int, optional): Number of ants in the colony. Must be greater than 0. Default is 50.
+            evaporation_rate (float, optional): Rate at which pheromones evaporate. Must be between 0 and 1 (exclusive). Default is 0.1.
+            alpha (float, optional): Relative importance of pheromone. Must be greater than 0. Default is 1.0.
+            beta (float, optional): Relative importance of heuristic information. Must be greater than 0. Default is 2.0.
+            seed (int or None, optional): Random seed for reproducibility. Default is None.
+            reset_threshold (int, optional): Number of iterations without improvement before pheromone reset. Must be greater than 0. Default is 100.
+            executer (str, optional): Execution mode, e.g., 'single' or other supported modes. Default is 'single'.
+
+        Raises:
+            ValueError: If any parameter is outside its valid range.
+        """
         # Se definen los métodos requeridos que el problema debe implementar.
         required_methods = ['fitness', 'initialize_pheromones', 'construct_solutions', 'update_pheromones', 'reset_pheromones']
         super().__init__(problem, required_methods, executer)
@@ -29,6 +82,23 @@ class ACO(Algorithm):
             raise ValueError("Reset threshold must be greater than 0.")
 
     def fit(self, iterations, timelimit=None, verbose=True):
+        """
+        Fits the Ant Colony Optimization (ACO) algorithm to the given problem instance.
+        This method runs the ACO metaheuristic for a specified number of iterations or until a time limit is reached.
+        It manages the pheromone initialization and update, solution construction, evaluation, and tracks the best solution found.
+        If no improvement is observed for a number of iterations defined by `self.reset_threshold`, the pheromones are reset.
+
+        Parameters:
+            iterations (int): The maximum number of iterations to run the algorithm. Must be greater than 0.
+            timelimit (float, optional): The maximum time (in seconds) to run the algorithm. If None, runs without a time limit.
+            verbose (bool, optional): If True, prints progress information during execution.
+
+        Returns:
+            np.ndarray: The best solution found during the optimization process.
+
+        Raises:
+            ValueError: If `timelimit` is negative or if `iterations` is not greater than 0.
+        """
         if timelimit is None:
             timelimit = np.inf
         if timelimit < 0:
@@ -98,6 +168,24 @@ class ACO(Algorithm):
         return np.copy(best)
     
     def fit_mpi(self, comm, rank, timelimit, sendto, receivefrom, verbose=True):
+        """
+        Executes the Ant Colony Optimization (ACO) algorithm in a distributed manner using MPI for parallel processing.
+        This method coordinates multiple processes to collaboratively solve an optimization problem by sharing the best solutions found among them. Each process constructs solutions, evaluates them, updates pheromones, and communicates the best solutions with neighboring processes.
+
+        Args:
+            comm: MPI communicator object used for inter-process communication.
+            rank (int): The rank (ID) of the current process.
+            timelimit (float): Maximum allowed time (in seconds) for the algorithm to run. Must be non-negative.
+            sendto (int): Rank of the process to which the best solution should be sent.
+            receivefrom (int): Rank of the process from which to receive the best solution.
+            verbose (bool, optional): If True, prints progress information. Defaults to True.
+
+        Raises:
+            ValueError: If `timelimit` is negative.
+            
+        Returns:
+            np.ndarray: The best solution found by this process during execution.
+        """
         if timelimit < 0:
             raise ValueError("Timelimit must be a non-negative value.")
 

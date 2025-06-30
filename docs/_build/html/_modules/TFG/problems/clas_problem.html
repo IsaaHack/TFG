@@ -1,0 +1,786 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TFG.problems.clas_problem &mdash; TFG 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            TFG
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TFG</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">TFG.problems.clas_problem</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for TFG.problems.clas_problem</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">Problem</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">utils</span><span class="p">,</span> <span class="n">utils_gpu</span>
+<span class="kn">import</span> <span class="nn">cupy</span> <span class="k">as</span> <span class="nn">cp</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="c1"># Constants for the problem</span>
+<span class="n">SQRT_03</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">MIN_STD</span> <span class="o">=</span> <span class="mf">1e-3</span>
+<span class="n">MAX_STD</span> <span class="o">=</span> <span class="mf">0.25</span>
+<span class="n">MAX_V</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ClasProblem">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem">[docs]</a>
+<span class="k">class</span> <span class="nc">ClasProblem</span><span class="p">(</span><span class="n">Problem</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ClasProblem is a classification problem class designed for feature selection and optimization using evolutionary and swarm-based algorithms. It supports CPU and GPU (CuPy) acceleration for fitness evaluation and provides methods for solution generation, evaluation, and population management.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        X (np.ndarray): Feature matrix (CPU).</span>
+<span class="sd">        Y (np.ndarray): Label vector (CPU).</span>
+<span class="sd">        X_gpu (cp.ndarray): Feature matrix (GPU).</span>
+<span class="sd">        Y_gpu (cp.ndarray): Label vector (GPU).</span>
+<span class="sd">        n_samples (int): Number of samples in the dataset.</span>
+<span class="sd">        n_features (int): Number of features in the dataset.</span>
+<span class="sd">        threshold (float): Threshold for feature selection.</span>
+<span class="sd">        alpha (float): Weighting factor for classification vs. reduction rate.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        __init__(X, Y, threshold=0.1, alpha=0.75):</span>
+<span class="sd">            Initializes the ClasProblem instance with data and parameters.</span>
+<span class="sd">        generate_solution(num_samples=1):</span>
+<span class="sd">            Generates random solutions for the feature selection problem.</span>
+<span class="sd">        fitness(solutions):</span>
+<span class="sd">            Evaluates the fitness of solutions using a CPU-based function.</span>
+<span class="sd">        fitness_omp(solutions):</span>
+<span class="sd">            Evaluates the fitness of solutions using an OpenMP-accelerated function.</span>
+<span class="sd">        fitness_gpu(solutions):</span>
+<span class="sd">            Evaluates the fitness of solutions using GPU acceleration (CuPy).</span>
+<span class="sd">        fitness_gpu2(solutions):</span>
+<span class="sd">            Alternative GPU-based fitness evaluation using custom CUDA kernels.</span>
+<span class="sd">        fitness_hybrid(solutions, speedup=1):</span>
+<span class="sd">            Hybrid fitness evaluation combining CPU and GPU methods.</span>
+<span class="sd">        clas_rate(solution):</span>
+<span class="sd">            Computes the classification accuracy rate for a given solution.</span>
+<span class="sd">        red_rate(solution):</span>
+<span class="sd">            Computes the feature reduction rate for a given solution.</span>
+<span class="sd">        predict(X_test, solution):</span>
+<span class="sd">            Predicts labels for test data using the selected features.</span>
+<span class="sd">        crossover(population, crossover_rate, alpha=0.3):</span>
+<span class="sd">            Performs crossover operation on the population for evolutionary algorithms.</span>
+<span class="sd">        mutation(population, mutation_rate):</span>
+<span class="sd">            Applies mutation to the population.</span>
+<span class="sd">        initialize_pheromones():</span>
+<span class="sd">            Initializes pheromone means and standard deviations for ACO algorithms.</span>
+<span class="sd">        construct_solutions(colony_size, pheromones, alpha, beta, out=None):</span>
+<span class="sd">            Constructs new solutions based on pheromone information.</span>
+<span class="sd">        update_pheromones(pheromones, colony, fitness_values, evaporation_rate):</span>
+<span class="sd">            Updates pheromone values based on colony performance.</span>
+<span class="sd">        reset_pheromones(pheromones):</span>
+<span class="sd">            Resets pheromones to initial values.</span>
+<span class="sd">        generate_velocity(num_samples=1):</span>
+<span class="sd">            Generates random velocities for PSO algorithms.</span>
+<span class="sd">        update_velocity(population, velocity, p_best, g_best, inertia_weight, cognitive_weight, social_weight):</span>
+<span class="sd">            Updates particle velocities in PSO.</span>
+<span class="sd">        update_position(population, velocity):</span>
+<span class="sd">            Updates particle positions in PSO, applying boundary constraints.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ClasProblem.__init__">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.75</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the classification problem with input data, labels, and optional parameters.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            X (array-like): Input feature data.</span>
+<span class="sd">            Y (array-like): Target labels.</span>
+<span class="sd">            threshold (float, optional): Threshold value for classification or other purposes. Default is 0.1.</span>
+<span class="sd">            alpha (float, optional): Alpha parameter for algorithm-specific tuning. Default is 0.75.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            X_gpu (cp.ndarray): Input features transferred to GPU as a CuPy array (float32).</span>
+<span class="sd">            Y_gpu (cp.ndarray): Target labels transferred to GPU as a CuPy array (int32).</span>
+<span class="sd">            X (array-like): Original input feature data.</span>
+<span class="sd">            Y (array-like): Original target labels.</span>
+<span class="sd">            n_samples (int): Number of samples in the dataset.</span>
+<span class="sd">            n_features (int): Number of features per sample.</span>
+<span class="sd">            threshold (float): Stored threshold value.</span>
+<span class="sd">            alpha (float): Stored alpha value.</span>
+
+<span class="sd">        Synchronizes the current CUDA device after data transfer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">X_gpu</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;C&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Y_gpu</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">Y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;C&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">X</span> <span class="o">=</span> <span class="n">X</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Y</span> <span class="o">=</span> <span class="n">Y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span> <span class="o">=</span> <span class="n">threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+
+        <span class="n">cp</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Device</span><span class="p">()</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ClasProblem.generate_solution">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.generate_solution">[docs]</a>
+    <span class="k">def</span> <span class="nf">generate_solution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates random solution(s) for the classification problem.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            num_samples (int, optional): Number of solutions to generate. </span>
+<span class="sd">                If 1 (default), returns a single solution vector. </span>
+<span class="sd">                If greater than 1, returns an array of solution vectors.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: A NumPy array of shape (n_features,) if num_samples == 1,</span>
+<span class="sd">                or shape (num_samples, n_features) if num_samples &gt; 1, containing</span>
+<span class="sd">                random float32 values uniformly sampled from [0, 1).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">num_samples</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">num_samples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ClasProblem.fitness">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.fitness">[docs]</a>
+    <span class="k">def</span> <span class="nf">fitness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solutions</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates the fitness value(s) for one or more solutions.</span>
+<span class="sd">        If a single solution is provided (1D array), computes its fitness directly.</span>
+<span class="sd">        If multiple solutions are provided (2D array), computes the fitness for each solution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            solutions (np.ndarray): A single solution (1D array) or multiple solutions (2D array).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float or np.ndarray: The fitness value for the single solution, or an array of fitness values for multiple solutions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">solutions</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">fitness</span><span class="p">(</span><span class="n">solutions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">utils</span><span class="o">.</span><span class="n">fitness</span><span class="p">(</span><span class="n">solution</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span><span class="p">)</span> <span class="k">for</span> <span class="n">solution</span> <span class="ow">in</span> <span class="n">solutions</span><span class="p">])</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.fitness_omp">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.fitness_omp">[docs]</a>
+    <span class="k">def</span> <span class="nf">fitness_omp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solutions</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates the fitness values for the given solutions using the OMP (Orthogonal Matching Pursuit) method.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            solutions (np.ndarray): Array of candidate solutions. Can be a 1D array (single solution) or 2D array (multiple solutions).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray or float: Fitness values for the provided solutions. Returns a single float if a single solution is provided, </span>
+<span class="sd">            otherwise returns a 1D numpy array of fitness values.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Uses the `utils.fitness_omp` function to perform the actual fitness computation.</span>
+<span class="sd">            - The fitness is computed based on the input data `self.X`, target values `self.Y`, regularization parameter `self.alpha`, </span>
+<span class="sd">              and threshold `self.threshold`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">solutions</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">fitness_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fitness_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">solutions</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="n">utils</span><span class="o">.</span><span class="n">fitness_omp</span><span class="p">(</span><span class="n">solutions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Y</span><span class="p">,</span> <span class="n">fitness_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fitness_values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">solutions</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">fitness_values</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.fitness_gpu">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.fitness_gpu">[docs]</a>
+    <span class="k">def</span> <span class="nf">fitness_gpu</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solutions</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the fitness values for a batch of solutions using GPU acceleration with CuPy.</span>
+<span class="sd">        This method evaluates each solution by applying feature selection and transformation,</span>
+<span class="sd">        then computes classification and reduction rates based on nearest neighbor predictions.</span>
+<span class="sd">        If GPU memory is insufficient, it falls back to an alternative implementation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        solutions : array-like or cupy.ndarray, shape (n_solutions, n_features)</span>
+<span class="sd">            The set of candidate solutions to evaluate. Each row represents a solution</span>
+<span class="sd">            with feature weights or selection values.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        numpy.ndarray, shape (n_solutions,)</span>
+<span class="sd">            The computed fitness values for each solution.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        - The fitness is a weighted sum of classification accuracy and feature reduction rate,</span>
+<span class="sd">          controlled by the `self.alpha` parameter.</span>
+<span class="sd">        - Uses GPU arrays (`cupy`) for efficient computation. Falls back to `fitness_gpu2`</span>
+<span class="sd">          if a GPU memory error occurs.</span>
+<span class="sd">        - Assumes `self.X_gpu` (features), `self.Y_gpu` (labels), `self.threshold`,</span>
+<span class="sd">          `self.n_features`, and `self.alpha` are defined and reside on the GPU.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">solutions_gpu</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">solutions</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;C&#39;</span><span class="p">)</span>
+            <span class="n">fitness_values</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">solutions_gpu</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+            <span class="n">cp</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Device</span><span class="p">()</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>  <span class="c1"># Sincroniza el dispositivo antes de llamar a la función CUDA</span>
+
+            <span class="c1"># Vectorización de todas las operaciones</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">solutions_gpu</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span>  <span class="c1"># (n_solutions, n_features)</span>
+            <span class="n">sqrt_weights</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">solutions_gpu</span><span class="p">),</span> <span class="n">mask</span><span class="p">)</span>  <span class="c1"># (n_solutions, n_features)</span>
+
+            <span class="c1"># Crear matriz 3D de características ponderadas (n_solutions, n_samples, n_features)</span>
+            <span class="n">X_all</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">X_gpu</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">*</span> <span class="n">sqrt_weights</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:])</span>
+
+            <span class="c1"># Cálculo eficiente de todas las matrices de distancias</span>
+            <span class="n">G</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;ijk,ilk-&gt;ijl&#39;</span><span class="p">,</span> <span class="n">X_all</span><span class="p">,</span> <span class="n">X_all</span><span class="p">)</span>
+            <span class="n">norms</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">X_all</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># (n_solutions, n_samples)</span>
+            <span class="n">D</span> <span class="o">=</span> <span class="n">norms</span><span class="p">[:,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">+</span> <span class="n">norms</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">G</span>
+
+            <span class="c1"># Configurar diagonales a infinito</span>
+            <span class="n">n_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">X_gpu</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">D</span><span class="p">[:,</span> <span class="n">cp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_samples</span><span class="p">),</span> <span class="n">cp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_samples</span><span class="p">)]</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">except</span> <span class="n">cp</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory</span><span class="o">.</span><span class="n">OutOfMemoryError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># Si hay un error de memoria, se usa la función alternativa</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fitness_gpu2</span><span class="p">(</span><span class="n">solutions</span><span class="p">)</span>
+
+        <span class="c1"># Cálculo vectorizado de predicciones y métricas</span>
+        <span class="n">index_pred</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">D</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># Índices de vecinos más cercanos</span>
+        <span class="n">prediction_labels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Y_gpu</span><span class="p">[</span><span class="n">index_pred</span><span class="p">]</span>  <span class="c1"># Etiquetas predichas</span>
+
+        <span class="n">clas_rate</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">cp</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">prediction_labels</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">Y_gpu</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># Tasa de acierto</span>
+        <span class="n">red_rate</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="n">cp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">~</span><span class="n">mask</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span>  <span class="c1"># Tasa de reducción</span>
+
+        <span class="c1"># Cálculo final del fitness</span>
+        <span class="n">fitness_values</span> <span class="o">=</span> <span class="n">clas_rate</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">+</span> <span class="n">red_rate</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fitness_values</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>  <span class="c1"># Convertir de cupy a numpy</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.fitness_gpu2">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.fitness_gpu2">[docs]</a>
+    <span class="k">def</span> <span class="nf">fitness_gpu2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solutions</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the fitness value(s) for the given solution(s) using GPU acceleration.</span>
+<span class="sd">        This method transfers the input solutions to the GPU, prepares the necessary data capsules,</span>
+<span class="sd">        and calls a CUDA-accelerated fitness function. It supports both single-solution (1D array)</span>
+<span class="sd">        and multiple-solution (2D array) inputs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        solutions : numpy.ndarray or cupy.ndarray</span>
+<span class="sd">            An array of solutions to evaluate. Can be a 1D array (single solution) or a 2D array</span>
+<span class="sd">            (multiple solutions, shape: [n_solutions, n_features]).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float or numpy.ndarray</span>
+<span class="sd">            The computed fitness value(s) for the input solution(s). Returns a single float if a</span>
+<span class="sd">            single solution is provided, or a numpy array of floats if multiple solutions are provided.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        - Requires GPU support and appropriate CUDA kernels via `utils_gpu`.</span>
+<span class="sd">        - Synchronizes the GPU device before computation to ensure data consistency.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">solutions_gpu</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">solutions</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">cp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;C&#39;</span><span class="p">)</span>
+
+        <span class="n">X_capsule</span> <span class="o">=</span> <span class="n">utils_gpu</span><span class="o">.</span><span class="n">create_capsule</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">X_gpu</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ptr</span><span class="p">)</span>
+        <span class="n">Y_capsule</span> <span class="o">=</span> <span class="n">utils_gpu</span><span class="o">.</span><span class="n">create_capsule</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Y_gpu</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ptr</span><span class="p">)</span>
+        
+        <span class="n">cp</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Device</span><span class="p">()</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>  <span class="c1"># Sincroniza el dispositivo antes de llamar a la función CUDA</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">solutions</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">utils_gpu</span><span class="o">.</span><span class="n">fitness_cuda</span><span class="p">(</span>
+                    <span class="n">utils_gpu</span><span class="o">.</span><span class="n">create_capsule</span><span class="p">(</span><span class="n">solutions_gpu</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ptr</span><span class="p">),</span>
+                    <span class="n">X_capsule</span><span class="p">,</span>
+                    <span class="n">Y_capsule</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span> 
+                    <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">utils_gpu</span><span class="o">.</span><span class="n">fitness_cuda</span><span class="p">(</span>
+                    <span class="n">utils_gpu</span><span class="o">.</span><span class="n">create_capsule</span><span class="p">(</span><span class="n">solutions_gpu</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ptr</span><span class="p">),</span>
+                    <span class="n">X_capsule</span><span class="p">,</span>
+                    <span class="n">Y_capsule</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span>
+            <span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">solutions</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])])</span></div>
+
+        
+<div class="viewcode-block" id="ClasProblem.fitness_hybrid">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.fitness_hybrid">[docs]</a>
+    <span class="k">def</span> <span class="nf">fitness_hybrid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solutions</span><span class="p">,</span> <span class="n">speedup</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Computes the fitness values for a set of solutions using a hybrid CPU/GPU approach.</span>
+<span class="sd">        This method evaluates the fitness of one or more candidate solutions by leveraging a GPU-accelerated</span>
+<span class="sd">        function. It supports both single-solution and batch evaluation. The function also returns an updated</span>
+<span class="sd">        speedup value, which may be used to tune the GPU computation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        solutions : np.ndarray</span>
+<span class="sd">            An array of candidate solutions to be evaluated. Can be a 1D array (single solution) or a 2D array</span>
+<span class="sd">            (multiple solutions).</span>
+<span class="sd">        speedup : int or float, optional</span>
+<span class="sd">            A parameter to control or record the speedup factor for GPU computation (default is 1).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        fitness_values : float or np.ndarray</span>
+<span class="sd">            The computed fitness value(s) for the provided solution(s). Returns a single float if a single</span>
+<span class="sd">            solution is provided, or a 1D numpy array of floats for multiple solutions.</span>
+<span class="sd">        new_speedup : int or float</span>
+<span class="sd">            The updated speedup value as returned by the GPU function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">solutions</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">fitness_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fitness_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">solutions</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="c1"># Llamar a la función de GPU</span>
+        <span class="n">new_speedup</span> <span class="o">=</span> <span class="n">utils_gpu</span><span class="o">.</span><span class="n">fitness_hybrid</span><span class="p">(</span>
+                <span class="n">solutions</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">Y</span><span class="p">,</span>
+                <span class="n">utils_gpu</span><span class="o">.</span><span class="n">create_capsule</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">X_gpu</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ptr</span><span class="p">),</span>
+                <span class="n">utils_gpu</span><span class="o">.</span><span class="n">create_capsule</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Y_gpu</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ptr</span><span class="p">),</span>
+                <span class="n">fitness_values</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">n_samples</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">,</span>
+                <span class="n">speedup</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fitness_values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">solutions</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">fitness_values</span><span class="p">,</span> <span class="n">new_speedup</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.clas_rate">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.clas_rate">[docs]</a>
+    <span class="k">def</span> <span class="nf">clas_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates the classification rate for a given solution.</span>
+<span class="sd">        This method delegates the computation to the `utils.clas_rate` function,</span>
+<span class="sd">        passing the provided solution along with the instance&#39;s feature matrix (self.X),</span>
+<span class="sd">        target labels (self.Y), and classification threshold (self.threshold).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            solution: The solution or model parameters to evaluate.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: The classification rate (accuracy) of the solution.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">clas_rate</span><span class="p">(</span><span class="n">solution</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.red_rate">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.red_rate">[docs]</a>
+    <span class="k">def</span> <span class="nf">red_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">solution</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculates the reduction rate for a given solution using the specified threshold.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            solution: The solution object or data structure to evaluate.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: The reduction rate computed by the utils.red_rate function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">red_rate</span><span class="p">(</span><span class="n">solution</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.predict">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.predict">[docs]</a>
+    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">solution</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Predicts the output for the given test data using the provided solution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            X_test (array-like): Test data to predict.</span>
+<span class="sd">            solution (object): Solution or model parameters to use for prediction.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            array-like: Predicted values for the test data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">utils</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">solution</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.crossover">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.crossover">[docs]</a>
+    <span class="k">def</span> <span class="nf">crossover</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">,</span> <span class="n">crossover_rate</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Performs blend crossover (BLX-alpha) on a population of individuals.</span>
+<span class="sd">        This method selects pairs of parents from the population and generates offspring by sampling uniformly within an extended range defined by the parents and the alpha parameter. The offspring replace the parents in the population. All resulting values are clipped to the [0, 1] range.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            population (np.ndarray): The population of individuals, where each individual is represented as a vector of real values.</span>
+<span class="sd">            crossover_rate (float): The proportion of the population to undergo crossover (between 0 and 1).</span>
+<span class="sd">            alpha (float, optional): The BLX-alpha parameter that controls the extent of the sampling range beyond the parents&#39; values. Default is 0.3.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None: The population is modified in place.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">n_pairs</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">crossover_rate</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">population</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">n_pairs</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Índices de los padres en parejas consecutivas</span>
+        <span class="n">idx_even</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n_pairs</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">idx_odd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">n_pairs</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Extrae los padres en forma vectorizada</span>
+        <span class="n">parents1</span> <span class="o">=</span> <span class="n">population</span><span class="p">[</span><span class="n">idx_even</span><span class="p">]</span>
+        <span class="n">parents2</span> <span class="o">=</span> <span class="n">population</span><span class="p">[</span><span class="n">idx_odd</span><span class="p">]</span>
+
+        <span class="c1"># Calcula c_max, c_min e I para cada par de padres</span>
+        <span class="n">c_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">parents1</span><span class="p">,</span> <span class="n">parents2</span><span class="p">)</span>
+        <span class="n">c_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">parents1</span><span class="p">,</span> <span class="n">parents2</span><span class="p">)</span>
+        <span class="n">I</span> <span class="o">=</span> <span class="n">c_max</span> <span class="o">-</span> <span class="n">c_min</span>
+
+        <span class="c1"># Genera dos conjuntos de descendientes utilizando la distribución uniforme</span>
+        <span class="n">offspring1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">c_min</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">I</span><span class="p">,</span> <span class="n">c_max</span> <span class="o">+</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">I</span><span class="p">)</span>
+        <span class="n">offspring2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">c_min</span> <span class="o">-</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">I</span><span class="p">,</span> <span class="n">c_max</span> <span class="o">+</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">I</span><span class="p">)</span>
+
+        <span class="c1"># Asigna los descendientes de vuelta a la población</span>
+        <span class="n">population</span><span class="p">[</span><span class="n">idx_even</span><span class="p">]</span> <span class="o">=</span> <span class="n">offspring1</span>
+        <span class="n">population</span><span class="p">[</span><span class="n">idx_odd</span><span class="p">]</span> <span class="o">=</span> <span class="n">offspring2</span>
+
+        <span class="c1"># Asegura que todos los valores estén en el rango [0,1]</span>
+        <span class="n">population</span><span class="p">[:</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n_pairs</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">population</span><span class="p">[:</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n_pairs</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ClasProblem.mutation">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.mutation">[docs]</a>
+    <span class="k">def</span> <span class="nf">mutation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">,</span> <span class="n">mutation_rate</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Applies mutation to a population matrix by randomly altering gene values.</span>
+<span class="sd">        Each mutation selects a random individual and gene, then adds Gaussian noise to the gene value,</span>
+<span class="sd">        clipping the result to the range [0, 1]. The number of mutations is determined by the mutation rate.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            population (np.ndarray): The population matrix of shape (num_individuals, num_genes).</span>
+<span class="sd">            mutation_rate (float): The probability of mutation per individual (between 0 and 1).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None: The population is modified in place.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">estimated_mutations</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mutation_rate</span> <span class="o">*</span> <span class="n">population</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="n">mutation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">SQRT_03</span><span class="p">,</span> <span class="n">estimated_mutations</span><span class="p">)</span>
+        <span class="n">genes_to_mutate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">population</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">estimated_mutations</span><span class="p">)</span>
+        <span class="n">people_to_mutate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">population</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">estimated_mutations</span><span class="p">)</span>
+
+        <span class="n">population</span><span class="p">[</span><span class="n">people_to_mutate</span><span class="p">,</span> <span class="n">genes_to_mutate</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">population</span><span class="p">[</span><span class="n">people_to_mutate</span><span class="p">,</span> <span class="n">genes_to_mutate</span><span class="p">]</span> <span class="o">+</span> <span class="n">mutation</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ClasProblem.initialize_pheromones">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.initialize_pheromones">[docs]</a>
+    <span class="k">def</span> <span class="nf">initialize_pheromones</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the pheromone parameters for each feature.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: A tuple containing two numpy arrays:</span>
+<span class="sd">                - means (np.ndarray): Randomly initialized means for each feature, sampled uniformly between 0 and 1.</span>
+<span class="sd">                - stds (np.ndarray): Standard deviations for each feature, initialized to 0.2.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">means</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">stds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">means</span><span class="p">,</span> <span class="n">stds</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.construct_solutions">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.construct_solutions">[docs]</a>
+    <span class="k">def</span> <span class="nf">construct_solutions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">colony_size</span><span class="p">,</span> <span class="n">pheromones</span><span class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructs a set of candidate solutions for the colony using vectorized sampling </span>
+<span class="sd">        from normal distributions influenced by pheromone information and exploration/exploitation parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            colony_size (int): Number of solutions (ants) to generate.</span>
+<span class="sd">            pheromones (tuple of np.ndarray): Tuple containing means and standard deviations </span>
+<span class="sd">                (means, stds) for each feature, representing the pheromone trails.</span>
+<span class="sd">            alpha (float): Parameter controlling exploitation; higher values increase exploitation </span>
+<span class="sd">                by reducing the influence of the mean.</span>
+<span class="sd">            beta (float): Parameter controlling exploration; higher values increase exploration </span>
+<span class="sd">                by reducing the influence of the standard deviation.</span>
+<span class="sd">            out (np.ndarray, optional): Optional output array to store the generated solutions.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Array of shape (colony_size, n_features) containing the generated solutions, </span>
+<span class="sd">            with values clipped to the [0.0, 1.0] range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">means</span><span class="p">,</span> <span class="n">stds</span> <span class="o">=</span> <span class="n">pheromones</span>
+
+        <span class="c1"># Ajustar medias usando alpha (control de explotación)</span>
+        <span class="n">adjusted_means</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">means</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">alpha</span> <span class="o">+</span> <span class="mf">1e-5</span><span class="p">)),</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        
+        <span class="c1"># Ajustar desviaciones usando beta (control de exploración)</span>
+        <span class="n">adjusted_stds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">stds</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">beta</span> <span class="o">+</span> <span class="mf">1e-5</span><span class="p">)),</span> <span class="n">MIN_STD</span><span class="p">,</span> <span class="n">MAX_STD</span><span class="p">)</span>
+        
+        <span class="c1"># Muestreo vectorizado con influencia de alpha en las medias</span>
+        <span class="n">solutions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+            <span class="n">adjusted_means</span><span class="p">,</span>
+            <span class="n">adjusted_stds</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">colony_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">)</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        
+        <span class="n">solutions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">solutions</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">out</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">solutions</span>
+
+        <span class="k">return</span> <span class="n">solutions</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.update_pheromones">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.update_pheromones">[docs]</a>
+    <span class="k">def</span> <span class="nf">update_pheromones</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pheromones</span><span class="p">,</span> <span class="n">colony</span><span class="p">,</span> <span class="n">fitness_values</span><span class="p">,</span> <span class="n">evaporation_rate</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Updates the pheromone parameters (means and standard deviations) for an ant colony optimization algorithm.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            pheromones (tuple): A tuple containing the current means and standard deviations (means, stds) of the pheromone model.</span>
+<span class="sd">            colony (np.ndarray): The current population of solutions (ants), shape (n_ants, n_features).</span>
+<span class="sd">            fitness_values (list or np.ndarray): Fitness values for each solution in the colony. Lower values indicate better solutions.</span>
+<span class="sd">            evaporation_rate (float): The rate at which pheromone information evaporates (decays) in each iteration.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: Updated means and standard deviations (new_means, new_stds) for the pheromone model.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - Fitness values are normalized and inverted to compute weights, so better solutions have higher influence.</span>
+<span class="sd">            - Means are updated using a weighted average of the colony, favoring better solutions.</span>
+<span class="sd">            - Standard deviations are updated using the elite subset of the colony to maintain exploration.</span>
+<span class="sd">            - Standard deviations are clipped to remain within predefined bounds (MIN_STD, MAX_STD).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">means</span><span class="p">,</span> <span class="n">stds</span> <span class="o">=</span> <span class="n">pheromones</span>
+        <span class="n">fitness</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="c1"># Normalizar fitness para usar como pesos</span>
+        <span class="n">fitness</span> <span class="o">=</span> <span class="n">fitness</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">fitness</span><span class="p">)</span>
+        <span class="n">fitness</span> <span class="o">=</span> <span class="n">fitness</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">fitness</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-10</span><span class="p">)</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">fitness</span>  <span class="c1"># Mejor fitness → peso más alto</span>
+        <span class="n">weights</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+
+        <span class="c1"># Calcular nueva media ponderada</span>
+        <span class="n">new_means</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="mf">0.9</span><span class="p">)</span> <span class="o">*</span> <span class="n">means</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">colony</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span>
+
+        <span class="c1"># Estimar desviación estándar con varianza ponderada (o usar la de la élite)</span>
+        <span class="n">elite_count</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">colony</span><span class="p">)</span> <span class="o">//</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="n">elite</span> <span class="o">=</span> <span class="n">colony</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">fitness_values</span><span class="p">)[:</span><span class="n">elite_count</span><span class="p">]]</span>
+        <span class="n">elite_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">elite</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        
+        <span class="n">new_stds</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">evaporation_rate</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">stds</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">elite_std</span>
+        <span class="n">new_stds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">new_stds</span><span class="p">,</span> <span class="n">MIN_STD</span><span class="p">,</span> <span class="n">MAX_STD</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">new_means</span><span class="p">,</span> <span class="n">new_stds</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.reset_pheromones">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.reset_pheromones">[docs]</a>
+    <span class="k">def</span> <span class="nf">reset_pheromones</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pheromones</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Resets the pheromone matrix to its initial state.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            pheromones: The current pheromone matrix (not used in this implementation).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The newly initialized pheromone matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">pheromones</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialize_pheromones</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">pheromones</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.generate_velocity">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.generate_velocity">[docs]</a>
+    <span class="k">def</span> <span class="nf">generate_velocity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generates random velocity vectors for particles.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            num_samples (int, optional): Number of velocity vectors to generate. </span>
+<span class="sd">                If 1 (default), returns a single vector of shape (n_features,).</span>
+<span class="sd">                If greater than 1, returns an array of shape (num_samples, n_features).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Random velocity vector(s) with values uniformly sampled from [-1, 1].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">num_samples</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">num_samples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></div>
+
+        
+<div class="viewcode-block" id="ClasProblem.update_velocity">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.update_velocity">[docs]</a>
+    <span class="k">def</span> <span class="nf">update_velocity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">,</span> <span class="n">velocity</span><span class="p">,</span> <span class="n">p_best</span><span class="p">,</span> <span class="n">g_best</span><span class="p">,</span> <span class="n">inertia_weight</span><span class="p">,</span> <span class="n">cognitive_weight</span><span class="p">,</span> <span class="n">social_weight</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Updates the velocity of particles in a Particle Swarm Optimization (PSO) algorithm.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            population (np.ndarray): Current positions of the particles.</span>
+<span class="sd">            velocity (np.ndarray): Current velocities of the particles.</span>
+<span class="sd">            p_best (np.ndarray): Personal best positions of the particles.</span>
+<span class="sd">            g_best (np.ndarray): Global best position found by the swarm.</span>
+<span class="sd">            inertia_weight (float): Inertia weight factor controlling exploration and exploitation.</span>
+<span class="sd">            cognitive_weight (float): Cognitive coefficient (particle&#39;s own experience).</span>
+<span class="sd">            social_weight (float): Social coefficient (swarm&#39;s experience).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: Updated velocities for the particles, clipped to the range [-MAX_V, MAX_V].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Calcular la velocidad usando la fórmula de PSO</span>
+        <span class="n">r1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="o">*</span><span class="n">population</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="n">r2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="o">*</span><span class="n">population</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="n">cognitive_component</span> <span class="o">=</span> <span class="n">cognitive_weight</span> <span class="o">*</span> <span class="n">r1</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_best</span> <span class="o">-</span> <span class="n">population</span><span class="p">)</span>
+        <span class="n">social_component</span> <span class="o">=</span> <span class="n">social_weight</span> <span class="o">*</span> <span class="n">r2</span> <span class="o">*</span> <span class="p">(</span><span class="n">g_best</span> <span class="o">-</span> <span class="n">population</span><span class="p">)</span>
+
+        <span class="n">new_velocity</span> <span class="o">=</span> <span class="n">inertia_weight</span> <span class="o">*</span> <span class="n">velocity</span> <span class="o">+</span> <span class="n">cognitive_component</span> <span class="o">+</span> <span class="n">social_component</span>
+
+        <span class="n">new_velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">new_velocity</span><span class="p">,</span> <span class="o">-</span><span class="n">MAX_V</span><span class="p">,</span> <span class="n">MAX_V</span><span class="p">)</span>
+
+        <span class="c1">#print(&quot;Mean velocity:&quot;, np.mean(np.abs(new_velocity)))</span>
+
+        <span class="k">return</span> <span class="n">new_velocity</span></div>
+
+    
+<div class="viewcode-block" id="ClasProblem.update_position">
+<a class="viewcode-back" href="../../../TFG.problems.html#TFG.problems.clas_problem.ClasProblem.update_position">[docs]</a>
+    <span class="k">def</span> <span class="nf">update_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">,</span> <span class="n">velocity</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Updates the positions of individuals in the population based on their velocities,</span>
+<span class="sd">        applying boundary conditions and ensuring all positions remain within [0, 1].</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            population (np.ndarray): The current positions of the population.</span>
+<span class="sd">            velocity (np.ndarray): The velocities to apply to the population.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: The updated positions of the population, clipped to the [0, 1] range.</span>
+<span class="sd">            </span>
+<span class="sd">        Notes:</span>
+<span class="sd">            - If an updated position goes out of bounds ([0, 1]), the velocity is reversed and halved (simulating a bounce),</span>
+<span class="sd">              and the position is updated again.</span>
+<span class="sd">            - All positions are clipped to ensure they remain within the valid range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Actualizar la posición de la población</span>
+        <span class="n">population</span> <span class="o">+=</span> <span class="n">velocity</span>
+
+        <span class="c1"># Aplicar rebote si la posición está fuera de los límites</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">population</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">population</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">velocity</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">*=</span> <span class="o">-</span><span class="mf">0.5</span>
+
+        <span class="n">population</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">+=</span> <span class="n">velocity</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+
+        <span class="c1"># Asegurarse de que los valores estén dentro del rango [0, 1]</span>
+        <span class="n">population</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">population</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">population</span></div>
+</div>
+
+    
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, IsaaHack.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

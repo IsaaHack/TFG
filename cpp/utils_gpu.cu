@@ -592,24 +592,37 @@ float fitness_hybrid(
 }
 
 PYBIND11_MODULE(utils_gpu, m) {
-    m.def("fitness_tsp_cuda", &fitness_tsp_cuda, "Calcular fitness del TSP usando CUDA",
-            py::arg("distances"), py::arg("solution"), py::arg("fitness"),
-            py::arg("n"), py::arg("num_solutions"));
-    m.def("fitness_tsp_hybrid", &fitness_tsp_hybrid, "Calcular fitness híbrido del TSP usando CUDA y CPU",
-            py::arg("distances"), py::arg("distances_capsule"),
-            py::arg("solution"), py::arg("fitness"),
-            py::arg("n"), py::arg("num_solutions"), py::arg("speedup_factor"));
-    m.def("fitness_cuda", &fitness_cuda, "Calcular fitness usando CUDA",
-          py::arg("weights"), py::arg("X_train"), py::arg("y_train"),
-          py::arg("num_samples"), py::arg("num_features"),
-          py::arg("alpha"), py::arg("threshold"));
-    m.def("fitness_hybrid", &fitness_hybrid, "Calcular fitness híbrido usando CUDA y CPU",
-            py::arg("weights"), py::arg("X_train"), py::arg("y_train"),
-            py::arg("X_train_capsule"), py::arg("y_train_capsule"),
-            py::arg("fitness_values"), py::arg("num_samples"),
-            py::arg("num_features"), py::arg("speedup_factor"),
-            py::arg("alpha"), py::arg("threshold"));
-    m.def("warmup", &warmup_kernel, "Calentar la GPU");
-    m.def("create_capsule", &create_capsule, "Crear cápsula CUDA",
-          py::arg("ptr_address"));
+    m.doc() = "CUDA-accelerated utility module for optimization tasks, including TSP and classification.";
+
+    m.def("fitness_tsp_cuda", &fitness_tsp_cuda,
+        "Computes the fitness (total distance) of TSP solutions using a CUDA kernel.",
+        py::arg("distances"), py::arg("solution"), py::arg("fitness"),
+        py::arg("n"), py::arg("num_solutions"));
+
+    m.def("fitness_tsp_hybrid", &fitness_tsp_hybrid,
+        "Computes the fitness of TSP solutions using a hybrid CUDA+CPU strategy with optional memory capsule.",
+        py::arg("distances"), py::arg("distances_capsule"),
+        py::arg("solution"), py::arg("fitness"),
+        py::arg("n"), py::arg("num_solutions"), py::arg("speedup_factor"));
+
+    m.def("fitness_cuda", &fitness_cuda,
+        "Computes the fitness for feature selection tasks using a CUDA kernel.",
+        py::arg("weights"), py::arg("X_train"), py::arg("y_train"),
+        py::arg("num_samples"), py::arg("num_features"),
+        py::arg("alpha"), py::arg("threshold"));
+
+    m.def("fitness_hybrid", &fitness_hybrid,
+        "Computes the fitness for feature selection using a hybrid CUDA+CPU strategy with memory capsules.",
+        py::arg("weights"), py::arg("X_train"), py::arg("y_train"),
+        py::arg("X_train_capsule"), py::arg("y_train_capsule"),
+        py::arg("fitness_values"), py::arg("num_samples"),
+        py::arg("num_features"), py::arg("speedup_factor"),
+        py::arg("alpha"), py::arg("threshold"));
+
+    m.def("warmup", &warmup_kernel,
+        "Initializes and warms up the GPU to avoid cold-start latency during execution.");
+
+    m.def("create_capsule", &create_capsule,
+        "Creates a CUDA memory capsule from a raw pointer for efficient memory reuse.",
+        py::arg("ptr_address"));
 }

@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TFG.algorithms.algorithm &mdash; TFG 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            TFG
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">TFG</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TFG</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">TFG.algorithms.algorithm</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for TFG.algorithms.algorithm</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">executers</span> <span class="kn">import</span> <span class="n">SingleCoreExecuter</span><span class="p">,</span> <span class="n">MultiCoreExecuter</span><span class="p">,</span> <span class="n">GpuExecuter</span><span class="p">,</span> <span class="n">HybridExecuter</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+<span class="kn">import</span> <span class="nn">tqdm</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">cupy</span> <span class="k">as</span> <span class="nn">cp</span>
+
+<span class="n">MESSAGE_TAG</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">FINISH_TAG</span> <span class="o">=</span> <span class="mi">1</span>
+
+<div class="viewcode-block" id="Algorithm">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.algorithm.Algorithm">[docs]</a>
+<span class="k">class</span> <span class="nc">Algorithm</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;Base class for optimization algorithms that operate on a given problem instance and support multiple execution strategies.</span>
+<span class="sd">    This abstract class provides a framework for implementing optimization algorithms, handling the initialization of execution backends (single-core, multi-core, GPU, or hybrid), enforcing required problem methods, managing random seeds, and offering progress bar utilities for iterative or time-limited algorithms.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        required_methods: List or set of method names that must be implemented by the problem.</span>
+<span class="sd">        executer: The execution backend used to run the algorithm (single-core, multi-core, GPU, or hybrid).</span>
+<span class="sd">        progress_bar: Progress bar object for tracking algorithm progress (initialized as None).</span>
+<span class="sd">        print_mode: Mode for progress bar updates (&#39;iterations&#39; or &#39;timelimit&#39;).</span>
+<span class="sd">        max_iter: Maximum number of iterations (if applicable).</span>
+<span class="sd">        timelimit: Time limit in seconds (if applicable).</span>
+<span class="sd">        start_time: Start time for time-limited progress tracking.</span>
+<span class="sd">        seed: Random seed for reproducibility.</span>
+<span class="sd">        </span>
+<span class="sd">    Methods:</span>
+<span class="sd">        __init__(problem, required_methods, executer_type=&#39;hybrid&#39;, executer=None):</span>
+<span class="sd">            Raises ValueError if an unknown or invalid executer type is provided.</span>
+<span class="sd">        init_seed(seed):</span>
+<span class="sd">            Sets the random seed for both NumPy and CuPy random number generators for reproducibility.</span>
+<span class="sd">        check_required_methods():</span>
+<span class="sd">            Ensures that the problem instance implements all required methods.</span>
+<span class="sd">            Raises ValueError if any required method is missing.</span>
+<span class="sd">        print_init(time_start, iterations, timelimit):</span>
+<span class="sd">            Initializes and configures the progress bar based on the stopping criterion (iterations or time limit).</span>
+<span class="sd">            Raises ValueError for invalid stopping criteria.</span>
+<span class="sd">        print_update(best_fit, n_iters=1):</span>
+<span class="sd">        print_end():</span>
+<span class="sd">        fit():</span>
+<span class="sd">            Abstract method to be implemented by subclasses, defining the training or optimization logic.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<div class="viewcode-block" id="Algorithm.__init__">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.algorithm.Algorithm.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">required_methods</span><span class="p">,</span> <span class="n">executer_type</span><span class="o">=</span><span class="s1">&#39;hybrid&#39;</span><span class="p">,</span> <span class="n">executer</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the algorithm with the specified problem, required methods, and execution strategy.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            problem: The problem instance to be solved.</span>
+<span class="sd">            required_methods: A list or set of method names that must be implemented.</span>
+<span class="sd">            executer_type (str, optional): The type of executer to use. Options are &#39;single&#39;, &#39;multi&#39;, &#39;gpu&#39;, or &#39;hybrid&#39;. Defaults to &#39;hybrid&#39;.</span>
+<span class="sd">            executer (optional): An instance of an executer. If None, an executer is created based on `executer_type`.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If an unknown executer type is provided or if the provided executer is not a valid type.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">            - If `executer` is None, an executer is instantiated based on `executer_type`.</span>
+<span class="sd">            - For &#39;hybrid&#39; executer type, a benchmark is performed using a generated solution.</span>
+<span class="sd">            - Ensures all required methods are implemented.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span> <span class="o">=</span> <span class="n">problem</span>
+
+        <span class="k">if</span> <span class="n">executer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">executer_type</span> <span class="o">==</span> <span class="s1">&#39;single&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">executer</span> <span class="o">=</span> <span class="n">SingleCoreExecuter</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">executer_type</span> <span class="o">==</span> <span class="s1">&#39;multi&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">executer</span> <span class="o">=</span> <span class="n">MultiCoreExecuter</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">executer_type</span> <span class="o">==</span> <span class="s1">&#39;gpu&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">executer</span> <span class="o">=</span> <span class="n">GpuExecuter</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">executer_type</span> <span class="o">==</span> <span class="s1">&#39;hybrid&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">executer</span> <span class="o">=</span> <span class="n">HybridExecuter</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">benchmark</span><span class="p">(</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_solution</span><span class="p">(</span><span class="mi">16</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown executer type: </span><span class="si">{</span><span class="n">executer_type</span><span class="si">}</span><span class="s2"> available: single, multi, gpu, hybrid&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">executer</span><span class="p">,</span> <span class="p">(</span><span class="n">SingleCoreExecuter</span><span class="p">,</span> <span class="n">MultiCoreExecuter</span><span class="p">,</span> <span class="n">GpuExecuter</span><span class="p">,</span> <span class="n">HybridExecuter</span><span class="p">)):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid executer type provided.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">executer</span> <span class="o">=</span> <span class="n">executer</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">required_methods</span> <span class="o">=</span> <span class="n">required_methods</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_required_methods</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="Algorithm.init_seed">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.algorithm.Algorithm.init_seed">[docs]</a>
+    <span class="k">def</span> <span class="nf">init_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the random seed for both NumPy and CuPy random number generators.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            seed (int): The seed value to set for reproducibility.</span>
+
+<span class="sd">        Sets:</span>
+<span class="sd">            self.seed (int): Stores the provided seed value.</span>
+<span class="sd">            np.random.seed: Sets the seed for NumPy&#39;s random number generator.</span>
+<span class="sd">            cp.random.seed: Sets the seed for CuPy&#39;s random number generator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+        <span class="n">cp</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Algorithm.check_required_methods">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.algorithm.Algorithm.check_required_methods">[docs]</a>
+    <span class="k">def</span> <span class="nf">check_required_methods</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Checks whether the problem instance implements all required methods.</span>
+
+<span class="sd">        Iterates over the list of required method names specified in `self.required_methods`</span>
+<span class="sd">        and verifies that each method exists in the `self.problem` object. If any required</span>
+<span class="sd">        method is missing, raises a ValueError indicating which method is not implemented.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the problem class does not implement a required method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">required_methods</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Problem class must implement the </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2"> method.&quot;</span><span class="p">)</span></div>
+
+            
+<div class="viewcode-block" id="Algorithm.print_init">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.algorithm.Algorithm.print_init">[docs]</a>
+    <span class="k">def</span> <span class="nf">print_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_start</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes and configures the progress bar for the algorithm based on the stopping criterion.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            time_start (float): The starting time of the algorithm, used for time-based progress tracking.</span>
+<span class="sd">            iterations (int or float): The maximum number of iterations to run. Use np.inf for unlimited iterations.</span>
+<span class="sd">            timelimit (float): The time limit in seconds for the algorithm to run. Use np.inf for unlimited time.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If both iterations and timelimit are set to np.inf (unlimited).</span>
+<span class="sd">            ValueError: If iterations is less than or equal to 0.</span>
+<span class="sd">            ValueError: If timelimit is less than or equal to 0.</span>
+
+<span class="sd">        Side Effects:</span>
+<span class="sd">            Sets the progress bar mode (&#39;timelimit&#39; or &#39;iterations&#39;), initializes the progress bar,</span>
+<span class="sd">            and stores relevant parameters as instance attributes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">iterations</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span> <span class="ow">and</span> <span class="n">timelimit</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Either iterations or timelimit must be set to a finite value.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">iterations</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Iterations must be greater than 0.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">timelimit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">timelimit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">if</span> <span class="n">timelimit</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Timelimit must be greater than 0.&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">iterations</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_mode</span> <span class="o">=</span> <span class="s1">&#39;timelimit&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_mode</span> <span class="o">=</span> <span class="s1">&#39;iterations&#39;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span> <span class="o">=</span> <span class="n">iterations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timelimit</span> <span class="o">=</span> <span class="n">timelimit</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">print_mode</span> <span class="o">==</span> <span class="s1">&#39;timelimit&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time_start</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span> <span class="o">=</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">tqdm</span><span class="p">(</span>
+                <span class="n">total</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">timelimit</span><span class="p">,</span>
+                <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;⏱ Time Progress&quot;</span><span class="p">,</span>
+                <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;s&quot;</span><span class="p">,</span>
+                <span class="n">bar_format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">{l_bar}</span><span class="s2">▕</span><span class="si">{bar}</span><span class="s2">▏ Elapsed: </span><span class="si">{elapsed}</span><span class="s2">, ETA: </span><span class="si">{remaining}</span><span class="s2"> </span><span class="si">{postfix}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span> <span class="o">=</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">tqdm</span><span class="p">(</span>
+                <span class="n">total</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span><span class="p">,</span>
+                <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Iterations&quot;</span><span class="p">,</span>
+                <span class="n">unit</span><span class="o">=</span><span class="s2">&quot;iter&quot;</span><span class="p">,</span>
+                <span class="n">leave</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Algorithm.print_update">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.algorithm.Algorithm.print_update">[docs]</a>
+    <span class="k">def</span> <span class="nf">print_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">best_fit</span><span class="p">,</span> <span class="n">n_iters</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Updates the progress bar and displays the current best fitness value.</span>
+
+<span class="sd">        Depending on the print mode, either updates the progress bar based on elapsed time</span>
+<span class="sd">        (&#39;timelimit&#39; mode) or by a specified number of iterations. Also sets a postfix string</span>
+<span class="sd">        to display the best fitness value.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            best_fit (float): The current best fitness value to display.</span>
+<span class="sd">            n_iters (int, optional): Number of iterations to update the progress bar by (default is 1).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">print_mode</span> <span class="o">==</span> <span class="s1">&#39;timelimit&#39;</span><span class="p">:</span>
+                <span class="n">elapsed_time</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+                <span class="n">elapsed_time</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">elapsed_time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">timelimit</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">elapsed_time</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">n_iters</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span><span class="o">.</span><span class="n">set_postfix_str</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Best fitness: </span><span class="si">{</span><span class="n">best_fit</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Algorithm.print_end">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.algorithm.Algorithm.print_end">[docs]</a>
+    <span class="k">def</span> <span class="nf">print_end</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Closes and resets the progress bar if it exists.</span>
+
+<span class="sd">        This method checks if the `progress_bar` attribute is not `None`. If so, it closes the progress bar and sets the attribute to `None` to clean up resources.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="Algorithm.fit">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.algorithm.Algorithm.fit">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Trains or fits the model to the provided data.</span>
+
+<span class="sd">        This method should be implemented by subclasses to define the training logic</span>
+<span class="sd">        for the algorithm. It typically processes input data and adjusts internal</span>
+<span class="sd">        parameters to optimize performance.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            NotImplementedError: If the method is not implemented in a subclass.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, IsaaHack.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

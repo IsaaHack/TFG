@@ -1,0 +1,368 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TFG.executers.local_executer &mdash; TFG 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            TFG
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TFG</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">TFG.executers.local_executer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for TFG.executers.local_executer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">This module defines a set of executer classes for evaluating the fitness of populations in optimization problems using different computational resources.</span>
+
+<span class="sd">Classes</span>
+<span class="sd">-------</span>
+<span class="sd">- LocalExecuter: Abstract base class for executers that operate on a given problem instance locally.</span>
+<span class="sd">- SingleCoreExecuter: Evaluates population fitness using a single CPU core.</span>
+<span class="sd">- MultiCoreExecuter: Evaluates population fitness in parallel using multiple CPU cores (OpenMP).</span>
+<span class="sd">- GpuExecuter: Evaluates population fitness using GPU acceleration.</span>
+<span class="sd">- HybridExecuter: Evaluates and benchmarks population fitness using a hybrid method, dynamically adjusting a speedup factor.</span>
+
+<span class="sd">Constants</span>
+<span class="sd">---------</span>
+
+<span class="sd">- NUM_SAMPLES: Number of samples for hybrid fitness evaluation benchmarking.</span>
+
+<span class="sd">Each executer class implements an `execute(population)` method, which delegates the fitness evaluation to the corresponding method of the associated problem instance.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">Executer</span>
+
+<span class="c1"># Number of samples for hybrid fitness evaluation for benchmarking</span>
+<span class="n">NUM_SAMPLES</span> <span class="o">=</span> <span class="mi">5</span>
+
+<div class="viewcode-block" id="LocalExecuter">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.LocalExecuter">[docs]</a>
+<span class="k">class</span> <span class="nc">LocalExecuter</span><span class="p">(</span><span class="n">Executer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    LocalExecuter is an abstract base class that inherits from Executer and is designed to execute operations on a given problem instance locally.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes:</span>
+<span class="sd">        problem: The problem instance to be solved or manipulated.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        execute(population):</span>
+<span class="sd">            Abstract method to execute operations on the provided population. Must be implemented by subclasses.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        problem: An instance representing the problem to be executed.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        NotImplementedError: If the execute method is not implemented in a subclass.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the instance with the given problem.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            problem: The problem instance or object to be associated with this executor.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span> <span class="o">=</span> <span class="n">problem</span>
+
+<div class="viewcode-block" id="LocalExecuter.execute">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.LocalExecuter.execute">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes an operation on the given population.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            population: The population to be processed. The type and structure of the population</span>
+<span class="sd">                should be specified in the implementing subclass or usage context.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            NotImplementedError: If the method is not implemented in a subclass.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">pass</span></div>
+</div>
+
+
+<div class="viewcode-block" id="SingleCoreExecuter">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.SingleCoreExecuter">[docs]</a>
+<span class="k">class</span> <span class="nc">SingleCoreExecuter</span><span class="p">(</span><span class="n">LocalExecuter</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    SingleCoreExecuter is a subclass of LocalExecuter that evaluates the fitness of a population using a single core.</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    execute(population):</span>
+<span class="sd">        Evaluates the fitness of the given population by calling the problem&#39;s fitness function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    population : iterable</span>
+<span class="sd">        The collection of individuals whose fitness will be evaluated.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fitness_values : Any</span>
+<span class="sd">        The result of the problem&#39;s fitness function applied to the population.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SingleCoreExecuter.execute">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.SingleCoreExecuter.execute">[docs]</a>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluates the fitness of a given population using the associated problem&#39;s fitness function.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            population: The population to be evaluated. The expected type and structure depend on the problem definition.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The fitness value(s) of the provided population as computed by the problem&#39;s fitness function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">fitness</span><span class="p">(</span><span class="n">population</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="MultiCoreExecuter">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.MultiCoreExecuter">[docs]</a>
+<span class="k">class</span> <span class="nc">MultiCoreExecuter</span><span class="p">(</span><span class="n">LocalExecuter</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    MultiCoreExecuter is a subclass of LocalExecuter that executes the evaluation of a population&#39;s fitness using multiple CPU cores.</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    execute(population):</span>
+<span class="sd">        Evaluates the fitness of the given population in parallel using OpenMP-enabled fitness calculation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    population : iterable</span>
+<span class="sd">        The collection of individuals whose fitness will be evaluated.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result</span>
+<span class="sd">        The result of the parallel fitness evaluation as returned by `self.problem.fitness_omp(population)`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MultiCoreExecuter.execute">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.MultiCoreExecuter.execute">[docs]</a>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluates the fitness of a given population using the problem&#39;s fitness_omp method.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            population: The population to be evaluated. The expected type and structure depend on the problem definition.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The result of the fitness_omp evaluation, typically a list or array of fitness values corresponding to the individuals in the population.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">fitness_omp</span><span class="p">(</span><span class="n">population</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="GpuExecuter">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.GpuExecuter">[docs]</a>
+<span class="k">class</span> <span class="nc">GpuExecuter</span><span class="p">(</span><span class="n">LocalExecuter</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    GpuExecuter is a subclass of LocalExecuter designed to evaluate the fitness of a population using GPU acceleration.</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    execute(population):</span>
+<span class="sd">        Evaluates the fitness of the given population using the GPU-accelerated fitness function defined in self.problem.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            population: The population of individuals to be evaluated.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The fitness values computed by the GPU.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GpuExecuter.execute">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.GpuExecuter.execute">[docs]</a>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes the fitness evaluation for a given population using GPU acceleration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            population: The population of individuals to be evaluated.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The fitness values of the population as computed by the problem&#39;s GPU-based fitness function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">fitness_gpu</span><span class="p">(</span><span class="n">population</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="HybridExecuter">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.HybridExecuter">[docs]</a>
+<span class="k">class</span> <span class="nc">HybridExecuter</span><span class="p">(</span><span class="n">LocalExecuter</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    HybridExecuter is a subclass of LocalExecuter designed to execute and benchmark a population using a hybrid fitness evaluation method.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        problem: An object representing the optimization problem, expected to provide a `fitness_hybrid` method.</span>
+<span class="sd">        s_gpu_omp (float): A parameter used to track and update the speedup factor for the hybrid fitness evaluation.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        __init__(problem):</span>
+<span class="sd">            Initializes the HybridExecuter with the given problem and sets the initial speedup factor.</span>
+<span class="sd">        benchmark(population):</span>
+<span class="sd">            Benchmarks the hybrid fitness evaluation on the provided population for a fixed number of samples,</span>
+<span class="sd">            updating the speedup factor accordingly.</span>
+<span class="sd">        execute(population):</span>
+<span class="sd">            Evaluates the fitness of the given population using the hybrid method and updates the speedup factor.</span>
+<span class="sd">            Returns the computed fitness values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="HybridExecuter.__init__">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.HybridExecuter.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the instance with the given problem.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            problem: The problem instance or configuration to be associated with this executor.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            problem: Stores the provided problem instance.</span>
+<span class="sd">            s_gpu_omp (int): Speedup factor for hybrid fitness evaluation, initialized to 1.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">problem</span> <span class="o">=</span> <span class="n">problem</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">s_gpu_omp</span> <span class="o">=</span> <span class="mi">1</span></div>
+
+
+<div class="viewcode-block" id="HybridExecuter.benchmark">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.HybridExecuter.benchmark">[docs]</a>
+    <span class="k">def</span> <span class="nf">benchmark</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluates the fitness of a given population multiple times using a hybrid fitness function.</span>
+<span class="sd">        For each sample in the predefined number of samples (NUM_SAMPLES), this method calls</span>
+<span class="sd">        the `fitness_hybrid` function of the associated problem, passing the population and the</span>
+<span class="sd">        current state of the speedup factor (`self.s_gpu_omp`).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            population: The population to be evaluated for fitness.</span>
+
+<span class="sd">        Side Effects:</span>
+<span class="sd">            Updates the internal state variable `self.s_gpu_omp` after each fitness evaluation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NUM_SAMPLES</span><span class="p">):</span>
+            <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_gpu_omp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">fitness_hybrid</span><span class="p">(</span><span class="n">population</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_gpu_omp</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HybridExecuter.execute">
+<a class="viewcode-back" href="../../../TFG.executers.html#TFG.executers.local_executer.HybridExecuter.execute">[docs]</a>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">population</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluates the fitness of a given population using a hybrid fitness function.</span>
+<span class="sd">        This method calls the `fitness_hybrid` function of the associated problem, passing the current</span>
+<span class="sd">        population and the current speedup value (`self.s_gpu_omp`). It updates `self.s_gpu_omp` with the</span>
+<span class="sd">        new value returned by the fitness function and returns the computed fitness values.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            population (iterable): The population of individuals to evaluate.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            fitness_values (iterable): The fitness values computed for the given population.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">fitness_values</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_gpu_omp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">fitness_hybrid</span><span class="p">(</span><span class="n">population</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_gpu_omp</span><span class="p">)</span>
+
+        <span class="c1">#self.s_gpu_omp = (self.s_gpu_omp + new_speedup) / 2</span>
+        <span class="k">return</span> <span class="n">fitness_values</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, IsaaHack.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

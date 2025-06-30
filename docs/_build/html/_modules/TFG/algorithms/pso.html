@@ -1,0 +1,413 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TFG.algorithms.pso &mdash; TFG 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            TFG
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">TFG</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">TFG</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">TFG.algorithms.pso</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for TFG.algorithms.pso</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">Algorithm</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">MESSAGE_TAG</span><span class="p">,</span> <span class="n">FINISH_TAG</span>
+<span class="kn">import</span> <span class="nn">pickle</span><span class="o">,</span> <span class="nn">zlib</span>
+
+<div class="viewcode-block" id="PSO">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.pso.PSO">[docs]</a>
+<span class="k">class</span> <span class="nc">PSO</span><span class="p">(</span><span class="n">Algorithm</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Particle Swarm Optimization (PSO) algorithm implementation.</span>
+<span class="sd">    This class provides an implementation of the Particle Swarm Optimization (PSO) algorithm for solving optimization problems.</span>
+<span class="sd">    PSO is a population-based stochastic optimization technique inspired by the social behavior of birds flocking or fish schooling.</span>
+<span class="sd">    The algorithm maintains a swarm of particles, where each particle represents a candidate solution. Particles move through the</span>
+<span class="sd">    solution space by updating their velocities and positions based on their own experience and the experience of their neighbors.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        swarm_size (int): Number of particles in the swarm.</span>
+<span class="sd">        inertia_weight (float): Inertia weight for velocity update.</span>
+<span class="sd">        cognitive_weight (float): Cognitive weight for velocity update.</span>
+<span class="sd">        social_weight (float): Social weight for velocity update.</span>
+<span class="sd">        seed (int or None): Random seed for reproducibility.</span>
+<span class="sd">        reset_threshold (int): Number of iterations without improvement before resetting a particle.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">        __init__(self, problem, swarm_size=100, inertia_weight=0.5, cognitive_weight=1.0, social_weight=1.0, seed=None, executer=&#39;single&#39;, reset_threshold=100):</span>
+<span class="sd">            Initializes the PSO algorithm with the specified parameters and validates their ranges.</span>
+<span class="sd">        fit(self, iterations, timelimit=None, verbose=True):</span>
+<span class="sd">            Runs the PSO algorithm for a specified number of iterations or until a time limit is reached.</span>
+<span class="sd">            Initializes the swarm, updates velocities and positions, evaluates fitness, and tracks the best solutions.</span>
+<span class="sd">            Supports partial swarm reset if no improvement is observed for a specified threshold.</span>
+<span class="sd">        fit_mpi(self, comm, rank, timelimit, sendto, receivefrom, verbose=True):</span>
+<span class="sd">            Executes the PSO algorithm in a distributed fashion using MPI for communication.</span>
+<span class="sd">            Each MPI process maintains its own swarm and communicates the best found solutions with neighboring processes.</span>
+<span class="sd">            Supports swarm reset and inter-process communication for best solution sharing.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+<div class="viewcode-block" id="PSO.__init__">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.pso.PSO.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">problem</span><span class="p">,</span> <span class="n">swarm_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">inertia_weight</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">cognitive_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">social_weight</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">executer</span><span class="o">=</span><span class="s1">&#39;single&#39;</span><span class="p">,</span> <span class="n">reset_threshold</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes the Particle Swarm Optimization (PSO) algorithm with the specified parameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            problem: An object representing the optimization problem. Must implement &#39;fitness&#39;, &#39;generate_solution&#39;, &#39;update_velocity&#39;, and &#39;update_position&#39; methods.</span>
+<span class="sd">            swarm_size (int, optional): Number of particles in the swarm. Must be greater than 0. Default is 100.</span>
+<span class="sd">            inertia_weight (float, optional): Inertia weight for velocity update. Must be between 0 and 1. Default is 0.5.</span>
+<span class="sd">            cognitive_weight (float, optional): Cognitive weight for velocity update. Must be between 0 and 1. Default is 1.0.</span>
+<span class="sd">            social_weight (float, optional): Social weight for velocity update. Must be between 0 and 1. Default is 1.0.</span>
+<span class="sd">            seed (int, optional): Random seed for reproducibility. Default is None.</span>
+<span class="sd">            executer (str, optional): Execution mode, e.g., &#39;single&#39; or other supported modes. Default is &#39;single&#39;.</span>
+<span class="sd">            reset_threshold (int, optional): Number of iterations without improvement before resetting a particle. Default is 100.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If any of the provided parameters are outside their valid ranges.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Se definen los métodos requeridos que el problema debe implementar.</span>
+        <span class="n">required_methods</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;fitness&#39;</span><span class="p">,</span> <span class="s1">&#39;generate_solution&#39;</span><span class="p">,</span> <span class="s1">&#39;update_velocity&#39;</span><span class="p">,</span> <span class="s1">&#39;update_position&#39;</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">problem</span><span class="p">,</span> <span class="n">required_methods</span><span class="p">,</span> <span class="n">executer</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">swarm_size</span> <span class="o">=</span> <span class="n">swarm_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inertia_weight</span> <span class="o">=</span> <span class="n">inertia_weight</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cognitive_weight</span> <span class="o">=</span> <span class="n">cognitive_weight</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">social_weight</span> <span class="o">=</span> <span class="n">social_weight</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">seed</span> <span class="o">=</span> <span class="n">seed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset_threshold</span> <span class="o">=</span> <span class="n">reset_threshold</span>
+
+        <span class="k">if</span> <span class="n">swarm_size</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Swarm size must be greater than 0.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">inertia_weight</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">inertia_weight</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Inertia weight must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cognitive_weight</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">cognitive_weight</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cognitive weight must be between 0 and 1.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">social_weight</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">social_weight</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Social weight must be between 0 and 1.&quot;</span><span class="p">)</span></div>
+
+        
+<div class="viewcode-block" id="PSO.fit">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.pso.PSO.fit">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">timelimit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Optimize the problem using Particle Swarm Optimization (PSO).</span>
+<span class="sd">        This method runs the PSO algorithm for a specified number of iterations or until a time limit is reached.</span>
+<span class="sd">        It initializes the swarm, updates velocities and positions, evaluates fitness, and tracks the best solutions.</span>
+<span class="sd">        If no improvement is observed for a specified number of iterations, the swarm is partially reset.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            iterations (int): Maximum number of iterations to run the algorithm. Must be greater than 0.</span>
+<span class="sd">            timelimit (float, optional): Maximum allowed runtime in seconds. If None, runs without a time limit.</span>
+<span class="sd">            verbose (bool, optional): If True, prints progress information during execution.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: The best solution found by the swarm.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If `timelimit` is negative or `iterations` is not greater than 0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">timelimit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">timelimit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">if</span> <span class="n">timelimit</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Timelimit must be a non-negative value.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">iterations</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Iterations must be greater than 0.&quot;</span><span class="p">)</span>
+        <span class="n">time_start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_init</span><span class="p">(</span><span class="n">time_start</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">)</span>
+
+        <span class="c1"># Inicializar el enjambre</span>
+        <span class="n">swarm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_solution</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">swarm_size</span><span class="p">)</span>
+        <span class="n">velocity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_velocity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">swarm_size</span><span class="p">)</span>
+        <span class="n">fitness</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">swarm</span><span class="p">)</span>
+
+        <span class="n">p_best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">swarm</span><span class="p">)</span>
+        <span class="n">p_best_fitness</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">fitness</span><span class="p">)</span>
+        <span class="n">g_best_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">p_best_fitness</span><span class="p">)</span>
+        <span class="n">g_best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">p_best</span><span class="p">[</span><span class="n">g_best_idx</span><span class="p">])</span>
+        <span class="n">g_best_fitness</span> <span class="o">=</span> <span class="n">p_best_fitness</span><span class="p">[</span><span class="n">g_best_idx</span><span class="p">]</span>
+
+        <span class="n">inertia</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inertia_weight</span>
+
+        <span class="n">iteration</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_update</span><span class="p">(</span><span class="n">g_best_fitness</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="n">iteration</span> <span class="o">&lt;</span> <span class="n">iterations</span> <span class="ow">and</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_start</span> <span class="o">&lt;</span> <span class="n">timelimit</span><span class="p">:</span>
+            <span class="c1"># Actualizar inercia</span>
+            <span class="n">inertia</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">inertia_weight</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">iteration</span> <span class="o">/</span> <span class="n">iterations</span><span class="p">))</span>
+
+            <span class="c1"># Actualizar velocidad y posición usando métodos del problema</span>
+            <span class="n">velocity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">update_velocity</span><span class="p">(</span><span class="n">swarm</span><span class="p">,</span> <span class="n">velocity</span><span class="p">,</span> <span class="n">p_best</span><span class="p">,</span> <span class="n">g_best</span><span class="p">,</span>
+                                                    <span class="n">inertia</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cognitive_weight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">social_weight</span><span class="p">)</span>
+            <span class="n">swarm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">update_position</span><span class="p">(</span><span class="n">swarm</span><span class="p">,</span> <span class="n">velocity</span><span class="p">)</span>
+
+            <span class="c1"># Evaluar fitness</span>
+            <span class="n">fitness</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">swarm</span><span class="p">)</span>
+
+            <span class="c1"># Actualizar el mejor personal</span>
+            <span class="n">improved</span> <span class="o">=</span> <span class="n">fitness</span> <span class="o">&gt;</span> <span class="n">p_best_fitness</span>
+            <span class="n">p_best</span><span class="p">[</span><span class="n">improved</span><span class="p">]</span> <span class="o">=</span> <span class="n">swarm</span><span class="p">[</span><span class="n">improved</span><span class="p">]</span>
+            <span class="n">p_best_fitness</span><span class="p">[</span><span class="n">improved</span><span class="p">]</span> <span class="o">=</span> <span class="n">fitness</span><span class="p">[</span><span class="n">improved</span><span class="p">]</span>
+
+            <span class="c1"># Actualizar el mejor global</span>
+            <span class="n">current_best_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">p_best_fitness</span><span class="p">)</span>
+            <span class="n">current_best_fitness</span> <span class="o">=</span> <span class="n">p_best_fitness</span><span class="p">[</span><span class="n">current_best_idx</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">current_best_fitness</span> <span class="o">&gt;</span> <span class="n">g_best_fitness</span><span class="p">:</span>
+                <span class="n">g_best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">p_best</span><span class="p">[</span><span class="n">current_best_idx</span><span class="p">])</span>
+                <span class="n">g_best_fitness</span> <span class="o">=</span> <span class="n">current_best_fitness</span>
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Reiniciar contador de no mejoras</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">no_improvement</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">no_improvement</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset_threshold</span><span class="p">:</span>
+                <span class="n">swarm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_solution</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">swarm_size</span><span class="p">)</span>
+                <span class="n">velocity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_velocity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">swarm_size</span><span class="p">)</span>
+                
+                <span class="n">swarm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">g_best</span><span class="p">)</span>  <span class="c1"># Mantener el mejor global en la primera posición</span>
+                <span class="n">fitness</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">g_best_fitness</span>  <span class="c1"># Mantener su fitness</span>
+                <span class="n">fitness</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">swarm</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>  <span class="c1"># Evaluar el resto del enjambre</span>
+
+                <span class="n">p_best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">swarm</span><span class="p">)</span>
+                <span class="n">p_best_fitness</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">fitness</span><span class="p">)</span>
+
+                <span class="n">g_best_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">p_best_fitness</span><span class="p">)</span>
+                <span class="n">g_best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">p_best</span><span class="p">[</span><span class="n">g_best_idx</span><span class="p">])</span>
+                <span class="n">g_best_fitness</span> <span class="o">=</span> <span class="n">p_best_fitness</span><span class="p">[</span><span class="n">g_best_idx</span><span class="p">]</span>
+
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Reiniciar contador de no mejoras</span>
+
+            <span class="n">iteration</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_update</span><span class="p">(</span><span class="n">g_best_fitness</span><span class="p">)</span>
+
+
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_end</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">g_best</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="PSO.fit_mpi">
+<a class="viewcode-back" href="../../../TFG.algorithms.html#TFG.algorithms.pso.PSO.fit_mpi">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit_mpi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">rank</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">,</span> <span class="n">sendto</span><span class="p">,</span> <span class="n">receivefrom</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Runs the Particle Swarm Optimization (PSO) algorithm in a distributed fashion using MPI for communication.</span>
+<span class="sd">        This method executes the PSO algorithm, where each MPI process maintains its own swarm and communicates</span>
+<span class="sd">        the best found solutions with neighboring processes. The algorithm continues until the specified time limit</span>
+<span class="sd">        is reached or the maximum number of iterations is exceeded.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            comm: MPI communicator object used for inter-process communication.</span>
+<span class="sd">            rank (int): The rank (ID) of the current MPI process.</span>
+<span class="sd">            timelimit (float): Maximum allowed runtime in seconds. Must be non-negative.</span>
+<span class="sd">            sendto (int): Rank of the process to which the best solution should be sent.</span>
+<span class="sd">            receivefrom (int): Rank of the process from which to receive the best solution.</span>
+<span class="sd">            verbose (bool, optional): If True, prints progress information. Default is True.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray: The best solution found by this process.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If `timelimit` is negative.</span>
+<span class="sd">            </span>
+<span class="sd">        Notes:</span>
+<span class="sd">            - The method assumes that the problem instance and executer are properly initialized.</span>
+<span class="sd">            - Communication between processes is performed using compressed and pickled data.</span>
+<span class="sd">            - The algorithm supports swarm reset if no improvement is observed for a specified threshold.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">timelimit</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Timelimit must be a non-negative value.&quot;</span><span class="p">)</span>
+
+        <span class="n">iterations</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+        <span class="n">time_start</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_init</span><span class="p">(</span><span class="n">time_start</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">timelimit</span><span class="p">)</span>
+
+        <span class="c1"># Inicializar el enjambre</span>
+        <span class="n">swarm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_solution</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">swarm_size</span><span class="p">)</span>
+        <span class="n">velocity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_velocity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">swarm_size</span><span class="p">)</span>
+        <span class="n">fitness</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">swarm</span><span class="p">)</span>
+
+        <span class="n">p_best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">swarm</span><span class="p">)</span>
+        <span class="n">p_best_fitness</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">fitness</span><span class="p">)</span>
+        <span class="n">g_best_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">p_best_fitness</span><span class="p">)</span>
+        <span class="n">g_best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">p_best</span><span class="p">[</span><span class="n">g_best_idx</span><span class="p">])</span>
+        <span class="n">g_best_fitness</span> <span class="o">=</span> <span class="n">p_best_fitness</span><span class="p">[</span><span class="n">g_best_idx</span><span class="p">]</span>
+
+        <span class="n">inertia</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inertia_weight</span>
+
+        <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span> 
+
+        <span class="n">iteration</span> <span class="o">=</span> <span class="mi">1</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_update</span><span class="p">(</span><span class="n">g_best_fitness</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="n">iteration</span> <span class="o">&lt;</span> <span class="n">iterations</span> <span class="ow">and</span> <span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_start</span> <span class="o">&lt;</span> <span class="n">timelimit</span><span class="p">:</span>
+            <span class="c1"># Actualizar inercia</span>
+            <span class="n">inertia</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">inertia_weight</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">iteration</span> <span class="o">/</span> <span class="n">iterations</span><span class="p">))</span>
+
+            <span class="c1"># Actualizar velocidad y posición usando métodos del problema</span>
+            <span class="n">velocity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">update_velocity</span><span class="p">(</span><span class="n">swarm</span><span class="p">,</span> <span class="n">velocity</span><span class="p">,</span> <span class="n">p_best</span><span class="p">,</span> <span class="n">g_best</span><span class="p">,</span>
+                                                    <span class="n">inertia</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cognitive_weight</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">social_weight</span><span class="p">)</span>
+            <span class="n">swarm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">update_position</span><span class="p">(</span><span class="n">swarm</span><span class="p">,</span> <span class="n">velocity</span><span class="p">)</span>
+
+            <span class="c1"># Evaluar fitness</span>
+            <span class="n">fitness</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">swarm</span><span class="p">)</span>
+
+            <span class="c1"># Actualizar el mejor personal</span>
+            <span class="n">improved</span> <span class="o">=</span> <span class="n">fitness</span> <span class="o">&gt;</span> <span class="n">p_best_fitness</span>
+            <span class="n">p_best</span><span class="p">[</span><span class="n">improved</span><span class="p">]</span> <span class="o">=</span> <span class="n">swarm</span><span class="p">[</span><span class="n">improved</span><span class="p">]</span>
+            <span class="n">p_best_fitness</span><span class="p">[</span><span class="n">improved</span><span class="p">]</span> <span class="o">=</span> <span class="n">fitness</span><span class="p">[</span><span class="n">improved</span><span class="p">]</span>
+
+            <span class="c1"># Actualizar el mejor global</span>
+            <span class="n">current_best_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">p_best_fitness</span><span class="p">)</span>
+            <span class="n">current_best_fitness</span> <span class="o">=</span> <span class="n">p_best_fitness</span><span class="p">[</span><span class="n">current_best_idx</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">current_best_fitness</span> <span class="o">&gt;</span> <span class="n">g_best_fitness</span><span class="p">:</span>
+                <span class="n">g_best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">p_best</span><span class="p">[</span><span class="n">current_best_idx</span><span class="p">])</span>
+                <span class="n">g_best_fitness</span> <span class="o">=</span> <span class="n">current_best_fitness</span>
+                <span class="c1"># Enviar el mejor resultado al siguiente proceso</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">g_best</span><span class="p">,</span> <span class="n">g_best_fitness</span><span class="p">)</span>
+                <span class="n">data_serialized</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+                <span class="n">comm</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data_serialized</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">sendto</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Reiniciar contador de no mejoras</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">no_improvement</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">no_improvement</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reset_threshold</span><span class="p">:</span>
+                <span class="n">swarm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_solution</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">swarm_size</span><span class="p">)</span>
+                <span class="n">velocity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">problem</span><span class="o">.</span><span class="n">generate_velocity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">swarm_size</span><span class="p">)</span>
+                
+                <span class="n">swarm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">g_best</span><span class="p">)</span>  <span class="c1"># Mantener el mejor global en la primera posición</span>
+                <span class="n">fitness</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">g_best_fitness</span>  <span class="c1"># Mantener su fitness</span>
+                <span class="n">fitness</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executer</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">swarm</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>  <span class="c1"># Evaluar el resto del enjambre</span>
+
+                <span class="n">p_best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">swarm</span><span class="p">)</span>
+                <span class="n">p_best_fitness</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">fitness</span><span class="p">)</span>
+
+                <span class="n">g_best_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">p_best_fitness</span><span class="p">)</span>
+                <span class="n">g_best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">p_best</span><span class="p">[</span><span class="n">g_best_idx</span><span class="p">])</span>
+                <span class="n">g_best_fitness</span> <span class="o">=</span> <span class="n">p_best_fitness</span><span class="p">[</span><span class="n">g_best_idx</span><span class="p">]</span>
+
+                <span class="n">no_improvement</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Reiniciar contador de no mejoras</span>
+
+            <span class="c1"># Recibir el mejor resultado del proceso recievefrom</span>
+            <span class="n">hay_mensaje</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Iprobe</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">receivefrom</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+            <span class="k">while</span> <span class="n">hay_mensaje</span><span class="p">:</span>
+                <span class="n">rank_received</span><span class="p">,</span> <span class="n">best_received</span><span class="p">,</span> <span class="n">best_fit_received</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span><span class="p">(</span><span class="n">comm</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">receivefrom</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)))</span>
+                <span class="k">if</span> <span class="n">best_fit_received</span> <span class="o">&gt;</span> <span class="n">g_best_fitness</span><span class="p">:</span>
+                    <span class="n">g_best</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">best_received</span><span class="p">)</span>
+                    <span class="n">g_best_fitness</span> <span class="o">=</span> <span class="n">best_fit_received</span>
+                <span class="k">if</span> <span class="n">rank_received</span> <span class="o">!=</span> <span class="n">rank</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank_received</span><span class="p">,</span> <span class="n">g_best</span><span class="p">,</span> <span class="n">g_best_fitness</span><span class="p">)</span>
+                    <span class="n">data_serialized</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+                <span class="n">hay_mensaje</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Iprobe</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">receivefrom</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">MESSAGE_TAG</span><span class="p">)</span>
+
+            <span class="n">iteration</span> <span class="o">+=</span> <span class="mi">1</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">print_update</span><span class="p">(</span><span class="n">g_best_fitness</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_end</span><span class="p">()</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">g_best</span><span class="p">,</span> <span class="n">g_best_fitness</span><span class="p">)</span>
+        <span class="n">data_serialized</span> <span class="o">=</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+        <span class="n">comm</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">data_serialized</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="n">sendto</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="n">FINISH_TAG</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">g_best</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, IsaaHack.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
