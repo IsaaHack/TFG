@@ -48,7 +48,7 @@ def classify_weight(weight):
             return label
     return 'Unknown relevance'
 
-def main(csv_file, algorithm='aco', executer='gpu', timelimit=None, iterations=300, verbose=True):
+def main(csv_file, algorithm='aco', executer='gpu', timelimit=None, iterations=300, dataset_size=500, verbose=True):
     # Read the CSV file
     df = read_csv_file(csv_file)
     
@@ -60,8 +60,6 @@ def main(csv_file, algorithm='aco', executer='gpu', timelimit=None, iterations=3
 
     X = X.astype('float32')
     y = y.astype('int32')
-
-    dataset_size = 500
 
     # Split the dataset into training and testing sets
     if X.shape[0] > dataset_size*10/7:

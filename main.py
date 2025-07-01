@@ -62,25 +62,41 @@ def main(test_type=None, algorithm=None, executer=None, tsp_file=None,
         algo = ['ga', 'aco', 'pso']
         exec = ['single', 'multi', 'gpu', 'hybrid']
 
-        timelimits = [20, 40, 60]
-        iterations = [300, 600, 900]
+        timelimits = [30, 60]
+        iterations = [500, 1000]
+        dataset_sizes = [500, 1000, 2000]
 
-        total_runs = len(algo) * len(exec) * (len(timelimits) + len(iterations))
+        total_runs = len(algo) * len(exec) * (len(timelimits) + len(iterations)) * len(dataset_sizes)
         runs_completed = 0
 
-        for a, e in itertools.product(algo, exec):
-            for t in timelimits:
-                i = np.inf
-                print(f"Running Clas with {a.upper()} on {e} executer for {t} seconds...")
-                clas_main(csv_file=csv_file, algorithm=a, executer=e, timelimit=t, iterations=i, verbose=False)
-                runs_completed += 1
-                print(f"Completed {runs_completed}/{total_runs} runs.")
-            for i in iterations:
-                t = None
-                print(f"Running Clas with {a.upper()} on {e} executer for {i} iterations...")
-                clas_main(csv_file=csv_file, algorithm=a, executer=e, timelimit=t, iterations=i, verbose=False)
-                runs_completed += 1
-                print(f"Completed {runs_completed}/{total_runs} runs.")
+        for dataset_size in dataset_sizes:
+            for a, e in itertools.product(algo, exec):
+                for t in timelimits:
+                    i = np.inf
+                    print(f"Running Clas with {a.upper()} on {e} executer for {t} seconds with dataset size {dataset_size}...")
+                    clas_main(csv_file=csv_file, algorithm=a, executer=e, timelimit=t, iterations=i, dataset_size=dataset_size, verbose=False)
+                    runs_completed += 1
+                    print(f"Completed {runs_completed}/{total_runs} runs.")
+                for i in iterations:
+                    t = None
+                    print(f"Running Clas with {a.upper()} on {e} executer for {i} iterations with dataset size {dataset_size}...")
+                    clas_main(csv_file=csv_file, algorithm=a, executer=e, timelimit=t, iterations=i, dataset_size=dataset_size, verbose=False)
+                    runs_completed += 1
+                    print(f"Completed {runs_completed}/{total_runs} runs.")
+
+        # for a, e in itertools.product(algo, exec):
+        #     for t in timelimits:
+        #         i = np.inf
+        #         print(f"Running Clas with {a.upper()} on {e} executer for {t} seconds...")
+        #         clas_main(csv_file=csv_file, algorithm=a, executer=e, timelimit=t, iterations=i, verbose=False)
+        #         runs_completed += 1
+        #         print(f"Completed {runs_completed}/{total_runs} runs.")
+        #     for i in iterations:
+        #         t = None
+        #         print(f"Running Clas with {a.upper()} on {e} executer for {i} iterations...")
+        #         clas_main(csv_file=csv_file, algorithm=a, executer=e, timelimit=t, iterations=i, verbose=False)
+        #         runs_completed += 1
+        #         print(f"Completed {runs_completed}/{total_runs} runs.")
 
         # Read de results file
         results_file = 'results/clas_results.csv'
