@@ -265,9 +265,9 @@ __global__ void distance_kernel(const float* __restrict__ X, const float* __rest
             sum += w * diff * diff;
         }
 
-        //float dist = sqrtf(sum);
-        distances[i * num_samples + j] = sum;
-        distances[j * num_samples + i] = sum;
+        float dist = sqrtf(sum);
+        distances[i * num_samples + j] = dist;
+        distances[j * num_samples + i] = dist;
     }
 }
 
@@ -279,7 +279,7 @@ __global__ void distance_kernel(const float* __restrict__ X, const float* __rest
     int j = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (i < num_samples && j < num_samples && i < j) {
-        float sum = 0.0f;
+        double sum = 0.0;
 
         // Cache X[i * num_features + feature_idx] en registros
         for (int k = 0; k < num_features; ++k) {
@@ -291,7 +291,7 @@ __global__ void distance_kernel(const float* __restrict__ X, const float* __rest
             sum += w * diff * diff;
         }
 
-        float dist = sqrtf(sum);
+        float dist = sqrt(sum);
         distances[i * num_samples + j] = dist;
         distances[j * num_samples + i] = dist;
     }
@@ -489,7 +489,7 @@ float fitness_hybrid(
     auto weights_ptr = static_cast<float *>(weights_info.ptr);
     auto X_train_ptr = static_cast<float *>(X_train_info.ptr);
     auto y_train_ptr = static_cast<int *>(y_train_info.ptr);
-    auto fitness_values = static_cast<float *>(fitness_values_info.ptr);
+    auto fitness_values = fitness_values_np.mutable_unchecked<1>();
 
     size_t w_size = X_train_info.shape[1];
     size_t n = X_train_info.shape[0];
@@ -541,8 +541,7 @@ float fitness_hybrid(
                 fitness_values[i] = alpha * clas + (1 - alpha) * red;
             }
 
-            // --- Liberar memoria de la GPU ---
-            cudaFree(weights_gpu_ptr);
+            cudaDeviceSynchronize();
 
             auto end = high_resolution_clock::now();
             duration<double> elapsed = end - start;
@@ -576,7 +575,7 @@ float fitness_hybrid(
 
             auto end = high_resolution_clock::now();
             duration<double> elapsed = end - start;
-            time_cpu = elapsed.count() / num_weights_cpu;
+            time_cpu = (num_weights_cpu != 0) ? (elapsed.count() / num_weights_cpu) : 0.0;
             
         }
     }

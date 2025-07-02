@@ -60,7 +60,7 @@ def main(test_type=None, algorithm=None, executer=None, tsp_file=None,
         csv_file = "datasets/Clas/bank.csv"
 
         algo = ['ga', 'aco', 'pso']
-        exec = ['single', 'multi', 'gpu', 'hybrid']
+        exec = ['single', 'multi', 'hybrid', 'gpu']
 
         timelimits = [30, 60]
         iterations = [300, 600]
