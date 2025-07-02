@@ -63,8 +63,8 @@ def main(test_type=None, algorithm=None, executer=None, tsp_file=None,
         exec = ['single', 'multi', 'gpu', 'hybrid']
 
         timelimits = [30, 60]
-        iterations = [500, 1000]
-        dataset_sizes = [500, 1000, 2000]
+        iterations = [300, 600]
+        dataset_sizes = [500, 1000, 1500, 2000]
 
         total_runs = len(algo) * len(exec) * (len(timelimits) + len(iterations)) * len(dataset_sizes)
         runs_completed = 0

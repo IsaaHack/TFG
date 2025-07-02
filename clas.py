@@ -135,10 +135,10 @@ def main(csv_file, algorithm='aco', executer='gpu', timelimit=None, iterations=3
             os.makedirs('results')
     if not os.path.exists(results_file):
         with open(results_file, 'w') as f:
-            f.write("Algorithm,Executer,Iterations,Timelimit,Fitness,Classification Rate,Reduction Rate,Accuracy,Time\n")
+            f.write("Size,Algorithm,Executer,Iterations,Timelimit,Fitness,Classification Rate,Reduction Rate,Accuracy,Time\n")
 
     with open(results_file, 'a') as f:
-        f.write(f"{algorithm},{executer},{iterations},{timelimit},{fit:.4f},{clas_rate:.4f},{red_rate:.4f},{accuracy:.4f},{end - start:.2f}\n")
+        f.write(f"{dataset_size},{algorithm},{executer},{iterations},{timelimit if timelimit else 'None'},{fit:.4f},{clas_rate:.4f},{red_rate:.4f},{accuracy:.4f},{end - start:.2f}\n")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
