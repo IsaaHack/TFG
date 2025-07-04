@@ -1,39 +1,33 @@
 import argparse
 import os
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from problems import ClasProblem
 from algorithms import ACO, GA, PSO
 from sklearn.model_selection import train_test_split
 import numpy as np
 from time import time
+from ucimlrepo import fetch_ucirepo
 
-def read_csv_file(path):
-    return pd.read_csv(path)
+def preprocess_wine_quality_dataset():
+    # fetch dataset 
+    wine_quality = fetch_ucirepo(id=186) 
 
-def preprocess_bank_marketing_dataset(df):
-    try:
-        pd.set_option('future.no_silent_downcasting', True)
-    except Exception as e:
-        pass
+    data = wine_quality.data.original
 
-    # Codificar binarias como 0/1
-    binary_cols = ['default', 'housing', 'loan']
-    df[binary_cols] = df[binary_cols].replace({'no': 0, 'yes': 1})
+    # data (as pandas dataframes) 
+    X = data.drop('color', axis=1)
+    y = data['color']
 
-    # Codificar target 'y'
-    df['y'] = df['y'].replace({'no': 0, 'yes': 1})
+    # Convert labels to integers
+    y = LabelEncoder().fit_transform(y)
+    X = X.astype('float32')
+    X = MinMaxScaler().fit_transform(X)
+    y = y.astype('int32')
 
-    # Variables numéricas a escalar
-    numeric_cols = ['age', 'balance', 'day', 'duration', 'campaign', 'pdays', 'previous']
-    scaler = StandardScaler()
-    df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
+    feature_names = data.columns[:-1].tolist()
 
-    # One-hot encoding para categóricas (no binarias)
-    categorical_cols = ['job', 'marital', 'education', 'contact', 'month', 'poutcome']
-    df = pd.get_dummies(df, columns=categorical_cols, drop_first=False)
-
-    return df
+    return X, y, feature_names
 
 def classify_weight(weight):
     relevancy_intervals = {
@@ -48,18 +42,8 @@ def classify_weight(weight):
             return label
     return 'Unknown relevance'
 
-def main(csv_file, algorithm='aco', executer='gpu', timelimit=None, iterations=300, dataset_size=500, verbose=True):
-    # Read the CSV file
-    df = read_csv_file(csv_file)
-    
-    # Preprocess the dataset
-    df = preprocess_bank_marketing_dataset(df)
-
-    X = df.drop('y', axis=1).values
-    y = df['y'].values
-
-    X = X.astype('float32')
-    y = y.astype('int32')
+def main(algorithm='ga', executer='gpu', timelimit=None, iterations=300, dataset_size=2000, verbose=True):
+    X, y, feature_names = preprocess_wine_quality_dataset()
 
     # Split the dataset into training and testing sets
     if X.shape[0] > dataset_size*10/7:
@@ -114,7 +98,6 @@ def main(csv_file, algorithm='aco', executer='gpu', timelimit=None, iterations=3
 
     # Filtrar las características seleccionadas
     selected_features = weights > 0.1
-    feature_names = df.drop('y', axis=1).columns
     
     if verbose:
         # Imprimir todas las características junto con su peso y si son seleccionadas
@@ -127,7 +110,10 @@ def main(csv_file, algorithm='aco', executer='gpu', timelimit=None, iterations=3
         print(f"Fitness: {fit:.4f} %")
         print(f"Classification Rate: {clas_rate:.4f} %")
         print(f"Reduction Rate: {red_rate:.4f} %")
+        print(f"Selected Features: {np.sum(selected_features)} out of {len(weights)}")
         print(f"Accuracy: {accuracy:.4f} %")
+        print(f"Fitness Train: {accuracy*0.75 + red_rate*0.25:.4f} %")
+        print(f"Time taken: {end - start:.2f} seconds")
 
     # Save the results to a CSV file
     results_file = 'results/clas_results.csv'
@@ -135,15 +121,14 @@ def main(csv_file, algorithm='aco', executer='gpu', timelimit=None, iterations=3
             os.makedirs('results')
     if not os.path.exists(results_file):
         with open(results_file, 'w') as f:
-            f.write("Size,Algorithm,Executer,Iterations,Timelimit,Fitness,Classification Rate,Reduction Rate,Accuracy,Time\n")
+            f.write("Size,Algorithm,Executer,Iterations,Timelimit,Fitness,Classification Rate,Reduction Rate,Selected Features,Accuracy,Fitness Train,Time\n")
 
     with open(results_file, 'a') as f:
-        f.write(f"{dataset_size},{algorithm},{executer},{iterations},{timelimit if timelimit else 'None'},{fit:.4f},{clas_rate:.4f},{red_rate:.4f},{accuracy:.4f},{end - start:.2f}\n")
+        f.write(f"{dataset_size},{algorithm},{executer},{iterations},{timelimit if timelimit else 'None'},{fit:.4f},{clas_rate:.4f},{red_rate:.4f},{np.sum(selected_features)},{accuracy:.4f},{accuracy*0.75 + red_rate*0.25:.4f},{end - start:.2f}\n")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description="Extract distance matrix from a TSPlib .tsp file using NumPy.")
-    parser.add_argument('csv_file', help='TSPlib .tsp file path')
+        description="Run a classification algorithm on Wine Quality dataset")
     parser.add_argument('-a','--algorithm', choices=['aco', 'ga', 'pso'], default='ga',
                         help='Algorithm to use (default: ga)')
     parser.add_argument('-e', '--executer', choices=['single', 'multi', 'gpu', 'hybrid'], default='gpu',
@@ -156,4 +141,4 @@ if __name__ == '__main__':
             raise ValueError(f"Invalid timelimit: {args.timelimit}. It must be a positive integer.")
         else:
             args.iterations = np.inf
-    main(args.csv_file, args.algorithm, args.executer, args.timelimit, args.iterations)
+    main(args.algorithm, args.executer, args.timelimit, args.iterations)

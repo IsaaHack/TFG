@@ -5,6 +5,7 @@ __pycache__/
 
 *.prof
 .nfs*
+hosts.txt
 
 # C extensions
 *.so

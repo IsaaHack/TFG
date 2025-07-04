@@ -37,7 +37,7 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--nodes', type=str, nargs='+', default=['compute5', 'compute2', 'compute3', 'compute4'], help='Nodes to run the script on (default: compute5 compute2 compute3 compute4)')
     parser.add_argument('-e', '--executer', type=str, default='gpu', choices=['single', 'multi', 'gpu', 'hybrid'], help='Execution type: single, multi, gpu, or hybrid (default: gpu)')
     parser.add_argument('-t', '--timelimit', type=int, default=60, help='Time limit for the algorithm in seconds (default: 60)')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output (default: False)')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output (default: True)', default=True)
     args = parser.parse_args()
     main(problem=args.problem, 
          problem_file=args.problem_file, 
