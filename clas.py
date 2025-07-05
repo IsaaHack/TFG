@@ -1,33 +1,39 @@
 import argparse
 import os
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 from problems import ClasProblem
 from algorithms import ACO, GA, PSO
 from sklearn.model_selection import train_test_split
 import numpy as np
 from time import time
-from ucimlrepo import fetch_ucirepo
 
-def preprocess_wine_quality_dataset():
-    # fetch dataset 
-    wine_quality = fetch_ucirepo(id=186) 
+def read_csv_file(path):
+    return pd.read_csv(path)
 
-    data = wine_quality.data.original
+def preprocess_bank_marketing_dataset(df):
+    try:
+        pd.set_option('future.no_silent_downcasting', True)
+    except Exception as e:
+        pass
 
-    # data (as pandas dataframes) 
-    X = data.drop('color', axis=1)
-    y = data['color']
+    # Codificar binarias como 0/1
+    binary_cols = ['default', 'housing', 'loan']
+    df[binary_cols] = df[binary_cols].replace({'no': 0, 'yes': 1})
 
-    # Convert labels to integers
-    y = LabelEncoder().fit_transform(y)
-    X = X.astype('float32')
-    X = MinMaxScaler().fit_transform(X)
-    y = y.astype('int32')
+    # Codificar target 'y'
+    df['y'] = df['y'].replace({'no': 0, 'yes': 1})
 
-    feature_names = data.columns[:-1].tolist()
+    # Variables numéricas a escalar
+    numeric_cols = ['age', 'balance', 'day', 'duration', 'campaign', 'pdays', 'previous']
+    scaler = StandardScaler()
+    df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
 
-    return X, y, feature_names
+    # One-hot encoding para categóricas (no binarias)
+    categorical_cols = ['job', 'marital', 'education', 'contact', 'month', 'poutcome']
+    df = pd.get_dummies(df, columns=categorical_cols, drop_first=False)
+
+    return df
 
 def classify_weight(weight):
     relevancy_intervals = {
@@ -42,8 +48,18 @@ def classify_weight(weight):
             return label
     return 'Unknown relevance'
 
-def main(algorithm='ga', executer='gpu', timelimit=None, iterations=300, dataset_size=2000, verbose=True):
-    X, y, feature_names = preprocess_wine_quality_dataset()
+def main(csv_file, algorithm='ga', executer='gpu', timelimit=None, iterations=300, dataset_size=500, verbose=True):
+    # Read the CSV file
+    df = read_csv_file(csv_file)
+    
+    # Preprocess the dataset
+    df = preprocess_bank_marketing_dataset(df)
+
+    X = df.drop('y', axis=1).values
+    y = df['y'].values
+
+    X = X.astype('float32')
+    y = y.astype('int32')
 
     # Split the dataset into training and testing sets
     if X.shape[0] > dataset_size*10/7:
@@ -98,6 +114,7 @@ def main(algorithm='ga', executer='gpu', timelimit=None, iterations=300, dataset
 
     # Filtrar las características seleccionadas
     selected_features = weights > 0.1
+    feature_names = df.drop('y', axis=1).columns
     
     if verbose:
         # Imprimir todas las características junto con su peso y si son seleccionadas
@@ -129,6 +146,7 @@ def main(algorithm='ga', executer='gpu', timelimit=None, iterations=300, dataset
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Run a classification algorithm on Wine Quality dataset")
+    parser.add_argument('csv_file', type=str, required=True, help='Path to the CSV file containing the dataset')
     parser.add_argument('-a','--algorithm', choices=['aco', 'ga', 'pso'], default='ga',
                         help='Algorithm to use (default: ga)')
     parser.add_argument('-e', '--executer', choices=['single', 'multi', 'gpu', 'hybrid'], default='gpu',
@@ -141,4 +159,4 @@ if __name__ == '__main__':
             raise ValueError(f"Invalid timelimit: {args.timelimit}. It must be a positive integer.")
         else:
             args.iterations = np.inf
-    main(args.algorithm, args.executer, args.timelimit, args.iterations)
+    main(args.csv_file, args.algorithm, args.executer, args.timelimit, args.iterations)

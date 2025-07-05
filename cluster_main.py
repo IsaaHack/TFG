@@ -1,7 +1,7 @@
 import argparse
 from executers import cluster_execute_run
 
-def main(problem='tsp', problem_file='datasets/TSP/berlin52.tsp', nodes=None, executer='gpu', timelimit=60, verbose=True):
+def main(problem='tsp', problem_file='', nodes=None, executer='gpu', timelimit=60, verbose=True):
     if problem == 'tsp':
         filename = 'cluster_tsp.py'
     elif problem == 'clas':
@@ -33,7 +33,7 @@ if __name__ == "__main__":
         description='Run a cluster script'
     )
     parser.add_argument('-p', '--problem', type=str, default='tsp', help='Problem to solve (default: tsp)')
-    parser.add_argument('-pf', '--problem_file', type=str, default='datasets/TSP/berlin52.tsp', help='Problem file path (default: data/berlin52.tsp)')
+    parser.add_argument('-pf', '--problem_file', type=str, help='Problem file path')
     parser.add_argument('-n', '--nodes', type=str, nargs='+', default=['compute5', 'compute2', 'compute3', 'compute4'], help='Nodes to run the script on (default: compute5 compute2 compute3 compute4)')
     parser.add_argument('-e', '--executer', type=str, default='gpu', choices=['single', 'multi', 'gpu', 'hybrid'], help='Execution type: single, multi, gpu, or hybrid (default: gpu)')
     parser.add_argument('-t', '--timelimit', type=int, default=60, help='Time limit for the algorithm in seconds (default: 60)')

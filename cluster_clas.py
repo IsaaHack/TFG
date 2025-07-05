@@ -7,16 +7,24 @@ from algorithms import ACO, GA, PSO
 import os
 from sklearn.model_selection import train_test_split
 
-from clas import preprocess_wine_quality_dataset, classify_weight
+from clas import read_csv_file, preprocess_bank_marketing_dataset, classify_weight
 
-def main(executer='gpu', timelimit=60, verbose=True):
+def main(csv_file, executer='gpu', timelimit=60, verbose=True):
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    X, y, feature_names = preprocess_wine_quality_dataset()
+    # Read the CSV file
+    df = read_csv_file(csv_file)
+    
+    # Preprocess the dataset
+    df = preprocess_bank_marketing_dataset(df)
 
-    dataset_size = 2000
+    X = df.drop('y', axis=1).values
+    y = df['y'].values
+
+    X = X.astype('float32')
+    y = y.astype('int32')
 
     # Split the dataset into training and testing sets
     if X.shape[0] > dataset_size*10/7:
@@ -37,6 +45,8 @@ def main(executer='gpu', timelimit=60, verbose=True):
     algorithm0 = GA(problem, population_size=50, seed=42, executer=executer)
     algorithm1 = ACO(problem, colony_size=50, seed=42, executer=executer, alpha=1.0, beta=1.5, evaporation_rate=0.03)
     algorithm2 = PSO(problem, swarm_size=50, seed=42, executer=executer, inertia_weight=0.9, cognitive_weight=0.4, social_weight=0.7)
+
+    comm.barrier()  # Ensure all processes are synchronized before proceeding
 
     algorithms = [algorithm0, algorithm1, algorithm2]
     exec = ClusterExecuter(algorithms, type='master-slave')
@@ -66,6 +76,7 @@ def main(executer='gpu', timelimit=60, verbose=True):
 
         # Filtrar las características seleccionadas
         selected_features = weights > 0.1
+        feature_names = df.drop('y', axis=1).columns
         
         if verbose:
             # Imprimir todas las características junto con su peso y si son seleccionadas
@@ -98,6 +109,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Run a cluster script for Wine Quality classification'
     )
+    parser.add_argument('csv_file', type=str, required=True, help='Path to the CSV file containing the dataset')
     parser.add_argument('-e', '--executer', type=str, default='gpu', choices=['single', 'multi', 'gpu', 'hybrid'], help='Execution type: single, multi, gpu, or hybrid (default: gpu)')
     parser.add_argument('-t', '--timelimit', type=int, default=60, help='Time limit for the algorithm in seconds (default: 60)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output (default: False)')

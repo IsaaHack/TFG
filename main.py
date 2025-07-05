@@ -62,8 +62,8 @@ def main(test_type=None, algorithm=None, executer=None, tsp_file=None,
         algo = ['ga', 'aco', 'pso']
         exec = ['single', 'multi', 'hybrid', 'gpu']
 
-        timelimits = [30, 60]
-        iterations = [300, 600]
+        timelimits = [60]
+        iterations = [300]
         dataset_sizes = [500, 1000, 1500, 2000]
 
         total_runs = len(algo) * len(exec) * (len(timelimits) + len(iterations)) * len(dataset_sizes)
@@ -83,20 +83,6 @@ def main(test_type=None, algorithm=None, executer=None, tsp_file=None,
                     clas_main(csv_file=csv_file, algorithm=a, executer=e, timelimit=t, iterations=i, dataset_size=dataset_size, verbose=False)
                     runs_completed += 1
                     print(f"Completed {runs_completed}/{total_runs} runs.")
-
-        # for a, e in itertools.product(algo, exec):
-        #     for t in timelimits:
-        #         i = np.inf
-        #         print(f"Running Clas with {a.upper()} on {e} executer for {t} seconds...")
-        #         clas_main(csv_file=csv_file, algorithm=a, executer=e, timelimit=t, iterations=i, verbose=False)
-        #         runs_completed += 1
-        #         print(f"Completed {runs_completed}/{total_runs} runs.")
-        #     for i in iterations:
-        #         t = None
-        #         print(f"Running Clas with {a.upper()} on {e} executer for {i} iterations...")
-        #         clas_main(csv_file=csv_file, algorithm=a, executer=e, timelimit=t, iterations=i, verbose=False)
-        #         runs_completed += 1
-        #         print(f"Completed {runs_completed}/{total_runs} runs.")
 
         # Read de results file
         results_file = 'results/clas_results.csv'
