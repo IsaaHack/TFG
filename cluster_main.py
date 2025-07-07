@@ -1,11 +1,13 @@
 import argparse
 from executers import cluster_execute_run
 
-def main(problem='tsp', problem_file='', nodes=None, executer='gpu', timelimit=60, verbose=True):
+def main(problem='tsp', problem_file='', nodes=None, executer='gpu', timelimit=60, verbose=True, dataset_size=None):
     if problem == 'tsp':
         filename = 'cluster_tsp.py'
     elif problem == 'clas':
         filename = 'cluster_clas.py'
+        if dataset_size is None:
+            dataset_size = 500
     else:
         raise ValueError(f"Unsupported problem type: {problem}. Supported types are 'tsp' and 'clas'.")
     
@@ -17,6 +19,8 @@ def main(problem='tsp', problem_file='', nodes=None, executer='gpu', timelimit=6
 
     program_args = problem_file.split() if problem_file else []
     program_args += ['-e', executer, '-t', str(timelimit)]
+    if dataset_size is not None and problem == 'clas':
+        program_args += ['-d', str(dataset_size)]
     if verbose:
         program_args.append('-v')
 
@@ -37,6 +41,7 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--nodes', type=str, nargs='+', default=['compute5', 'compute2', 'compute3', 'compute4'], help='Nodes to run the script on (default: compute5 compute2 compute3 compute4)')
     parser.add_argument('-e', '--executer', type=str, default='gpu', choices=['single', 'multi', 'gpu', 'hybrid'], help='Execution type: single, multi, gpu, or hybrid (default: gpu)')
     parser.add_argument('-t', '--timelimit', type=int, default=60, help='Time limit for the algorithm in seconds (default: 60)')
+    parser.add_argument('-d', '--dataset_size', type=int, default=None, help='Size of the dataset to use for classification problems (default: None)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output (default: True)', default=True)
     args = parser.parse_args()
     main(problem=args.problem, 
@@ -44,4 +49,5 @@ if __name__ == "__main__":
          nodes=args.nodes, 
          executer=args.executer, 
          timelimit=args.timelimit, 
+         dataset_size=args.dataset_size,
          verbose=args.verbose)

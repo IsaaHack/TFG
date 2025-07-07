@@ -124,12 +124,12 @@ def main(csv_file, algorithm='ga', executer='gpu', timelimit=None, iterations=30
                 print(f"{name}: {weight:.4f} - {classify_weight(weight)}")
 
         print("\nResults:")
-        print(f"Fitness: {fit:.4f} %")
+        print(f"Fitness Train: {fit:.4f} %")
         print(f"Classification Rate: {clas_rate:.4f} %")
         print(f"Reduction Rate: {red_rate:.4f} %")
         print(f"Selected Features: {np.sum(selected_features)} out of {len(weights)}")
         print(f"Accuracy: {accuracy:.4f} %")
-        print(f"Fitness Train: {accuracy*0.75 + red_rate*0.25:.4f} %")
+        print(f"Fitness Test: {accuracy*0.75 + red_rate*0.25:.4f} %")
         print(f"Time taken: {end - start:.2f} seconds")
 
     # Save the results to a CSV file
@@ -138,7 +138,7 @@ def main(csv_file, algorithm='ga', executer='gpu', timelimit=None, iterations=30
             os.makedirs('results')
     if not os.path.exists(results_file):
         with open(results_file, 'w') as f:
-            f.write("Size,Algorithm,Executer,Iterations,Timelimit,Fitness,Classification Rate,Reduction Rate,Selected Features,Accuracy,Fitness Train,Time\n")
+            f.write("Size,Algorithm,Executer,Iterations,Timelimit,Fitness,Classification Rate,Reduction Rate,Selected Features,Accuracy,Fitness Test,Time\n")
 
     with open(results_file, 'a') as f:
         f.write(f"{dataset_size},{algorithm},{executer},{iterations},{timelimit if timelimit else 'None'},{fit:.4f},{clas_rate:.4f},{red_rate:.4f},{np.sum(selected_features)},{accuracy:.4f},{accuracy*0.75 + red_rate*0.25:.4f},{end - start:.2f}\n")

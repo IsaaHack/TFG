@@ -1,4 +1,4 @@
-Size,Algorithm,Executer,Iterations,Timelimit,Fitness,Classification Rate,Reduction Rate,Selected Features,Accuracy,Fitness Train,Time
+Size,Algorithm,Executer,Iterations,Timelimit,Fitness,Classification Rate,Reduction Rate,Selected Features,Accuracy,Fitness Test,Time
 500,ga,single,inf,60,84.0875,89.2000,68.7500,15,85.4514,81.2760,60.07
 500,ga,single,300,None,84.0875,89.2000,68.7500,15,85.4514,81.2760,36.58
 500,ga,multi,inf,60,87.0000,91.0000,75.0000,12,84.9291,82.4468,60.00

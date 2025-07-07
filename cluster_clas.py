@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 
 from clas import read_csv_file, preprocess_bank_marketing_dataset, classify_weight
 
-def main(csv_file, executer='gpu', timelimit=60, verbose=True):
+def main(csv_file, executer='gpu', timelimit=60, dataset_size=500, verbose=False):
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -86,12 +86,12 @@ def main(csv_file, executer='gpu', timelimit=60, verbose=True):
                     print(f"{name}: {weight:.4f} - {classify_weight(weight)}")
 
             print("\nResults:")
-            print(f"Fitness: {fit:.4f} %")
+            print(f"Fitness Train: {fit:.4f} %")
             print(f"Classification Rate: {clas_rate:.4f} %")
             print(f"Reduction Rate: {red_rate:.4f} %")
             print(f"Selected Features: {np.sum(selected_features)} out of {len(weights)}")
             print(f"Accuracy: {accuracy:.4f} %")
-            print(f"Fitness Train: {accuracy*0.75 + red_rate*0.25:.4f} %")
+            print(f"Fitness Test: {accuracy*0.75 + red_rate*0.25:.4f} %")
 
         # Save the results to a CSV file
         results_file = 'results/cluster_clas_results.csv'
@@ -100,19 +100,21 @@ def main(csv_file, executer='gpu', timelimit=60, verbose=True):
 
         if not os.path.exists(results_file):
             with open(results_file, 'w') as f:
-                f.write("Size,Executer,Timelimit,Fitness,Classification Rate,Reduction Rate,Selected Features,Accuracy,Fitness Train\n")
+                f.write("Size,Executer,Timelimit,Fitness,Classification Rate,Reduction Rate,Selected Features,Accuracy,Fitness Test\n")
 
         with open(results_file, 'a') as f:
-            f.write(f"{dataset_size},{executer},{timelimit},{fit:.4f},{clas_rate:.4f},{red_rate:.4f},{accuracy:.4f},{accuracy*0.75 + red_rate*0.25:.4f}\n")
+            f.write(f"{dataset_size},{executer},{timelimit},{fit:.4f},{clas_rate:.4f},{red_rate:.4f},{np.sum(selected_features)},{accuracy:.4f},{accuracy*0.75 + red_rate*0.25:.4f}\n")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Run a cluster script for Wine Quality classification'
     )
-    parser.add_argument('csv_file', type=str, required=True, help='Path to the CSV file containing the dataset')
+    parser.add_argument('csv_file', type=str, help='Path to the CSV file containing the dataset')
     parser.add_argument('-e', '--executer', type=str, default='gpu', choices=['single', 'multi', 'gpu', 'hybrid'], help='Execution type: single, multi, gpu, or hybrid (default: gpu)')
     parser.add_argument('-t', '--timelimit', type=int, default=60, help='Time limit for the algorithm in seconds (default: 60)')
+    parser.add_argument('-d', '--dataset_size', type=int, default=500, help='Size of the dataset to use (default: 500)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output (default: False)')
     args = parser.parse_args()
     
-    main(executer=args.executer, timelimit=args.timelimit, verbose=args.verbose)
+    main(executer=args.executer, timelimit=args.timelimit, 
+         dataset_size=args.dataset_size, csv_file=args.csv_file, verbose=args.verbose)
