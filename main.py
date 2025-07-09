@@ -185,49 +185,54 @@ def main(test_type=None, algorithm=None, executer=None, tsp_file=None,
 
 def analysis_TSP():
     print("Starting analysis of TSP results...")
+
     # Cargar datos
     df = pd.read_csv('results/tsp_results.csv')
 
-    # Filtrar por Iterations = 500 o 1000
-    df_filtered = df[df['Iterations'].isin([500, 1000])]
+    # Filtrar por Iterations = 1000 o Timelimit = 60
+    df_filtered = df[(df['Iterations'] == 1000) | (df['Timelimit'] == 60)]
 
-    # Crear un diccionario para almacenar los DataFrames por algoritmo
+    # Crear un diccionario para almacenar los DataFrames por algoritmo y condición
     excel_data = {}
 
     # Para cada algoritmo
     for algorithm in df_filtered['Algorithm'].unique():
         df_algo = df_filtered[df_filtered['Algorithm'] == algorithm]
-        
-        # Crear una lista para almacenar los datos ordenados
-        data_frames = []
 
-        # Primero Iterations = 500
-        df_500 = df_algo[df_algo['Iterations'] == 500]
-        for executer in ['single', 'multi', 'gpu', 'hybrid']:
-            df_exec_500 = df_500[df_500['Executer'] == executer]
-            if not df_exec_500.empty:
-                df_exec_500 = df_exec_500[['Iterations', 'Executer', 'Cities', 'Fitness', 'Gap', 'Time']]
-                data_frames.append(df_exec_500)
-        
-        # Después Iterations = 1000
-        df_1000 = df_algo[df_algo['Iterations'] == 1000]
-        for executer in ['single', 'multi', 'gpu', 'hybrid']:
-            df_exec_1000 = df_1000[df_1000['Executer'] == executer]
-            if not df_exec_1000.empty:
-                df_exec_1000 = df_exec_1000[['Iterations', 'Executer', 'Cities', 'Fitness', 'Gap', 'Time']]
-                data_frames.append(df_exec_1000)
-        
-        # Concatenar todos los resultados en un único DataFrame para este algoritmo
-        final_df = pd.concat(data_frames, ignore_index=True)
-        
-        # Guardar en el diccionario
-        excel_data[algorithm] = final_df
+        # Separar por Timelimit = 60
+        df_time_60 = df_algo[df_algo['Timelimit'] == 60]
+        data_time = []
 
-    # Guardar todos los DataFrames en un único archivo Excel (una hoja por algoritmo)
+        for executer in ['single', 'multi', 'gpu', 'hybrid']:
+            df_exec = df_time_60[df_time_60['Executer'] == executer]
+            if not df_exec.empty:
+                df_exec = df_exec[['Timelimit', 'Executer', 'Cities', 'Fitness', 'Gap', 'Time']]
+                data_time.append(df_exec)
+
+        final_time_df = pd.concat(data_time, ignore_index=True) if data_time else pd.DataFrame()
+
+        # Separar por Iterations = 1000
+        df_iter_1000 = df_algo[df_algo['Iterations'] == 1000]
+        data_iter = []
+
+        for executer in ['single', 'multi', 'gpu', 'hybrid']:
+            df_exec = df_iter_1000[df_iter_1000['Executer'] == executer]
+            if not df_exec.empty:
+                df_exec = df_exec[['Iterations', 'Executer', 'Cities', 'Fitness', 'Gap', 'Time']]
+                data_iter.append(df_exec)
+
+        final_iter_df = pd.concat(data_iter, ignore_index=True) if data_iter else pd.DataFrame()
+
+        # Guardar en el diccionario con nombre de hoja específico
+        if not final_time_df.empty:
+            excel_data[f"{algorithm}_60s"] = final_time_df
+        if not final_iter_df.empty:
+            excel_data[f"{algorithm}_1000it"] = final_iter_df
+
+    # Guardar en un archivo Excel con múltiples hojas
     with pd.ExcelWriter('results/tsp_results_summary.xlsx') as writer:
-        for algorithm, data in excel_data.items():
-            # Usar el nombre del algoritmo como nombre de la hoja
-            sheet_name = algorithm[:31]  # máximo 31 caracteres para el nombre de hoja en Excel
+        for sheet_name, data in excel_data.items():
+            sheet_name = sheet_name[:31]  # Excel no permite nombres de hoja > 31 caracteres
             data.to_excel(writer, sheet_name=sheet_name, index=False)
 
     print("Archivo 'tsp_results_summary.xlsx' generado con éxito.")

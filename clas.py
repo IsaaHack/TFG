@@ -146,17 +146,18 @@ def main(csv_file, algorithm='ga', executer='gpu', timelimit=None, iterations=30
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Run a classification algorithm on Wine Quality dataset")
-    parser.add_argument('csv_file', type=str, required=True, help='Path to the CSV file containing the dataset')
+    parser.add_argument('csv_file', type=str, help='Path to the CSV file containing the dataset')
     parser.add_argument('-a','--algorithm', choices=['aco', 'ga', 'pso'], default='ga',
                         help='Algorithm to use (default: ga)')
     parser.add_argument('-e', '--executer', choices=['single', 'multi', 'gpu', 'hybrid'], default='gpu',
                         help='Execution type: single, multi, gpu, or hybrid (default: gpu)')
     parser.add_argument('-t', '--timelimit', type=int, default=None, help='Time limit for the algorithm in seconds (default: None)')
     parser.add_argument('-i', '--iterations', type=int, default=300, help='Number of iterations for the algorithm (default: 300)')
+    parser.add_argument('-d', '--dataset_size', type=int, default=500, help='Size of the dataset to use (default: 500)')
     args = parser.parse_args()
     if args.timelimit is not None:
         if args.timelimit <= 0:
             raise ValueError(f"Invalid timelimit: {args.timelimit}. It must be a positive integer.")
         else:
             args.iterations = np.inf
-    main(args.csv_file, args.algorithm, args.executer, args.timelimit, args.iterations)
+    main(args.csv_file, args.algorithm, args.executer, args.timelimit, args.iterations, args.dataset_size)
